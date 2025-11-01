@@ -1,3 +1,3 @@
 # ReExplain
 
-Re-explain the world's smartest ideas.
+Knowledge, re-explained.
