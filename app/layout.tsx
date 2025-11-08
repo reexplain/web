@@ -7,11 +7,11 @@ export const metadata: Metadata = {
   description: APP_DESCRIPTION,
 };
 
-export default function RootLayout({
+const RootLayout = ({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>) {
+}>) => {
   return (
     <html lang="en">
       <head>
@@ -35,7 +35,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="ReExplain" />
         <link rel="manifest" href="/favicons/site.webmanifest" />
       </head>
-      <body className={`p-4 lg:p-6 antialiased`}>{children}</body>
+      <body className={`p-4 lg:p-6 antialiased flex flex-col gap-4 min-h-screen mx-auto max-w-[1440px]`}>{children}</body>
     </html>
   );
-}
+};
+
+export default RootLayout;
