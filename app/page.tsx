@@ -11,7 +11,7 @@ const Home = () => {
           Knowledge,
           <span className="block font-medium">re-explained.</span>
         </div>
-        <Button className="h-fit py-4 px-8 rounded-full font-secondary w-fit text-xl">Start learning!</Button>
+        <Button className="h-fit py-3 px-6 md:py-4 md:px-8 rounded-full font-secondary w-fit text-lg md:text-xl">Start learning!</Button>
       </div>
     </>
   )

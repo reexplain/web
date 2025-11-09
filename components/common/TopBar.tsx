@@ -11,7 +11,7 @@ const TopBar = () => {
                 <div className="font-secondary text-xl font-medium">ReExplain</div>
             </div>
             {/* Login button */}
-            <Button variant="outline" className="rounded-full font-secondary uppercase text-base border-foreground">Login</Button>
+            <Button variant="outline" className="rounded-full font-secondary uppercase border-foreground">Login</Button>
         </div>
     )
 }
