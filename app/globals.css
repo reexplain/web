@@ -7,6 +7,7 @@
   --breakpoint-xs: 30rem;
   --breakpoint-2xl: 100rem;
   --breakpoint-3xl: 120rem;
+  --font-secondary: "Clash Grotesk", sans-serif;
 }
 
 @theme inline {
@@ -48,8 +49,8 @@
 }
 
 :root {
-  --primary-font: "Satoshi", sans-serif;
-  --secondary-font: "Clash Grotesk", sans-serif;
+  --font-primary: "Satoshi", sans-serif;
+  --font-secondary: "Clash Grotesk", sans-serif;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -123,6 +124,6 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-(family-name:--primary-font);
+    @apply bg-background text-foreground font-(family-name:--font-primary);
   }
 }
