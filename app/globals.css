@@ -7,6 +7,7 @@
   --breakpoint-xs: 30rem;
   --breakpoint-2xl: 100rem;
   --breakpoint-3xl: 120rem;
+  --font-primary: "Satoshi", sans-serif;
   --font-secondary: "Clash Grotesk", sans-serif;
 }
 
@@ -42,16 +43,18 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
 }
 
 :root {
-  --font-primary: "Satoshi", sans-serif;
-  --font-secondary: "Clash Grotesk", sans-serif;
-  --radius: 0.625rem;
+  --radius: 0;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -124,6 +127,27 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-(family-name:--font-primary);
+    @apply text-foreground font-primary;
+    background-color: #fefefc;
+    background-image:
+      linear-gradient(rgba(19, 28, 31, 0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(19, 28, 31, 0.022) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+}
+
+@layer components {
+  .upload-shell {
+    @apply overflow-hidden border-2 border-emerald-500 bg-background;
+    box-shadow: 7px 7px 0 #d9f99d;
+  }
+
+  .upload-dropzone {
+    @apply relative m-0 flex w-full items-center bg-background;
+  }
+
+  .upload-shell-active {
+    @apply border-emerald-600;
+    box-shadow: 7px 7px 0 #bef264;
   }
 }

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import "./globals.css";
 import { APP_NAME, APP_DESCRIPTION } from "@/utils/constants";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next"
+
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -32,10 +35,14 @@ const RootLayout = ({
           sizes="180x180"
           href="/favicons/apple-touch-icon.png"
         />
-        <meta name="apple-mobile-web-app-title" content="ReExplain" />
+        <meta name="apple-mobile-web-app-title" content={APP_NAME} />
         <link rel="manifest" href="/favicons/site.webmanifest" />
       </head>
-      <body className={`p-4 lg:p-6 antialiased flex flex-col gap-4 min-h-screen mx-auto max-w-[1440px]`}>{children}</body>
+      <body className={`antialiased`}>
+        <div className="p-4 lg:p-6 mx-auto flex flex-col gap-4 min-h-screen max-w-[1440px]">{children}</div>
+        <Analytics />
+        <SpeedInsights />
+      </body>
     </html>
   );
 };
