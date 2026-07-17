@@ -1,8 +1,12 @@
+import { headers } from "next/headers";
 import TopBar from "@/components/common/TopBar";
 import PdfUploadBox from "@/components/common/PdfUploadBox";
+import { auth } from "@/lib/auth";
 import { APP_DESCRIPTION } from "@/utils/constants";
 
-const Home = () => {
+const Home = async () => {
+  const session = await auth.api.getSession({ headers: await headers() });
+
   return (
     <>
       <TopBar />
@@ -23,7 +27,7 @@ const Home = () => {
             </p>
           </div>
           <div className="flex flex-col gap-4">
-            <PdfUploadBox />
+            <PdfUploadBox isAuthenticated={Boolean(session)} />
             <div className="flex flex-wrap gap-2 text-xs text-foreground/50">
               <span>Powered by OpenAI</span>
               {/* <span>Private by default</span> */}

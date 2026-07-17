@@ -3,6 +3,10 @@ export const APP_DESCRIPTION =
 	"Upload your study material, explain what you've learned in your own words, and let AI challenge your understanding with adaptive questions.";
 export const PDF_UPLOAD_DESCRIPTION =
 	`Upload a PDF and ${APP_NAME} will turn it into an interactive explanation session.`;
+export const PDF_CONTENT_TYPE = "application/pdf";
+export const MAX_PDF_SIZE_BYTES = 20 * 1024 * 1024;
+export const MAX_PDF_PAGE_COUNT = 25;
+export const EXPLAIN_ROUTE = "/explain";
 export const AUTH_DEFAULT_REDIRECT = "/dashboard";
 export const AUTH_REDIRECT_QUERY_PARAM = "redirect";
 export const LOGIN_DIALOG_TITLE = `Sign in to ${APP_NAME}`;
