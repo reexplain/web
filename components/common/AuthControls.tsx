@@ -109,7 +109,7 @@ const AuthControls = () => {
                         onClick={signInWithGoogle}
                     >
                         {/* <span aria-hidden="true" className="font-semibold">G</span> */}
-                        {isSigningIn ? "Signing in with Google..." : "Continue with Google"}
+                        {isSigningIn ? "Signing in with Google..." : "Sign in with Google"}
                     </Button>
                     {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
                 </div>

@@ -10,9 +10,9 @@ const Home = () => {
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 sm:gap-10">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4">
-              <p className="text-xs font-medium uppercase tracking-[0.18em]">
+              {/* <p className="text-xs font-medium uppercase tracking-[0.18em]">
                 Read less passively
-              </p>
+              </p> */}
               <h1 className="font-secondary text-4xl font-medium leading-[0.98] sm:text-6xl lg:text-7xl">
                 Find out what you
                 <span className="text-emerald-500"> actually understand.</span>
