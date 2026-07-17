@@ -3,23 +3,22 @@ import { redirect } from "next/navigation";
 import ExplainWorkflow from "@/components/common/ExplainWorkflow";
 import TopBar from "@/components/common/TopBar";
 import { auth } from "@/lib/auth";
-import { AUTH_REDIRECT_QUERY_PARAM, EXPLAIN_ROUTE } from "@/utils/constants";
-import { LoaderCircle } from "lucide-react";
+import { AUTH_REDIRECT_QUERY_PARAM, SESSION_ROUTE } from "@/utils/constants";
 
-const ExplainPage = async () => {
+const SessionPage = async () => {
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {
     redirect(
-      `/?${AUTH_REDIRECT_QUERY_PARAM}=${encodeURIComponent(EXPLAIN_ROUTE)}`,
+      `/?${AUTH_REDIRECT_QUERY_PARAM}=${encodeURIComponent(SESSION_ROUTE)}`,
     );
   }
 
   return (
     <>
       <TopBar />
-      <main className="flex flex-1 items-center py-10 sm:py-14 lg:py-16">
-        <div className="mx-auto w-full max-w-5xl">
+      <main className="flex flex-1 py-4 sm:py-6">
+        <div className="mx-auto w-full">
           <ExplainWorkflow />
         </div>
       </main>
@@ -27,4 +26,4 @@ const ExplainPage = async () => {
   );
 };
 
-export default ExplainPage;
+export default SessionPage;

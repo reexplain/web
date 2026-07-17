@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { stagePdf } from "@/lib/staged-pdf";
 import { cn } from "@/lib/utils";
 import {
-    EXPLAIN_ROUTE,
+    SESSION_ROUTE,
     MAX_PDF_PAGE_COUNT,
     MAX_PDF_SIZE_BYTES,
     PDF_CONTENT_TYPE,
@@ -78,7 +78,7 @@ const PdfUploadBox = ({ isAuthenticated }: PdfUploadBoxProps) => {
             await stagePdf(file);
 
             if (isAuthenticated) {
-                router.push(EXPLAIN_ROUTE);
+                router.push(SESSION_ROUTE);
                 return;
             }
 
@@ -151,7 +151,7 @@ const PdfUploadBox = ({ isAuthenticated }: PdfUploadBoxProps) => {
                                     </div>
                                     <div className="flex min-w-0 flex-col gap-1">
                                         <p className="truncate font-medium">{file.name}</p>
-                                        <p className="text-sm text-foreground/55">
+                                        <p className="text-sm text-foreground/75">
                                             {formatFileSize(file.size)} · Ready to upload
                                         </p>
                                     </div>
@@ -180,7 +180,7 @@ const PdfUploadBox = ({ isAuthenticated }: PdfUploadBoxProps) => {
                                     <Upload aria-hidden="true" data-icon="inline-start" strokeWidth={1.7} />
                                     Choose a PDF
                                 </Button>
-                                <span className="text-sm text-foreground/55">
+                                <span className="text-sm text-foreground/50">
                                     or drag and drop it anywhere in this box
                                 </span>
                             </div>
@@ -206,7 +206,7 @@ const PdfUploadBox = ({ isAuthenticated }: PdfUploadBoxProps) => {
                                 disabled={isPreparing}
                                 onClick={startExplanation}
                             >
-                                {isPreparing ? "Preparing PDF..." : "Explain this PDF"}
+                                {isPreparing ? "Extracting PDF..." : "Explain this PDF"}
                                 <ArrowRight aria-hidden="true" data-icon="inline-end" />
                             </Button>
                         ) : (
@@ -218,7 +218,7 @@ const PdfUploadBox = ({ isAuthenticated }: PdfUploadBoxProps) => {
                 )}
             </Card>
             <LoginDialog
-                callbackURL={EXPLAIN_ROUTE}
+                callbackURL={SESSION_ROUTE}
                 open={isLoginOpen}
                 onOpenChange={setIsLoginOpen}
             />

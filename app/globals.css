@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@source "../components";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -137,6 +138,10 @@
 }
 
 @layer components {
+  .text-trim {
+    text-box-trim: trim-both;
+  }
+
   .upload-shell {
     @apply overflow-hidden border-2 border-emerald-500 bg-background;
     box-shadow: 7px 7px 0 #d9f99d;

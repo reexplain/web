@@ -1,6 +1,6 @@
 import { LoaderCircle } from "lucide-react";
 
-const ExplainLoading = () => (
+const SessionLoading = () => (
     <main className="flex h-full m-auto items-center justify-center font-medium gap-2" role="status">
         <LoaderCircle
             aria-label="Loading explanation"
@@ -11,4 +11,4 @@ const ExplainLoading = () => (
     </main>
 );
 
-export default ExplainLoading;
+export default SessionLoading;

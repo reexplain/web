@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, LoaderCircle, RotateCcw } from "lucide-react";
+import { LoaderCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { clearStagedPdf, getStagedPdf } from "@/lib/staged-pdf";
+import SessionWorkspace from "@/components/common/SessionWorkspace";
 
 type ExtractionResult = {
   filename: string;
@@ -90,25 +91,7 @@ const ExplainWorkflow = () => {
   }
 
   if (result) {
-    return (
-      <div className="flex max-w-2xl flex-col gap-6" aria-live="polite">
-        <div className="grid size-14 place-items-center bg-emerald-500 text-white">
-          <Check aria-hidden="true" className="size-7" strokeWidth={2} />
-        </div>
-        <div className="flex flex-col gap-3">
-          <p className="text-xs font-medium uppercase text-emerald-600">Extraction complete</p>
-          <h1 className="font-secondary text-4xl font-medium sm:text-6xl">
-            Your explanation workspace is next.
-          </h1>
-          <p className="leading-relaxed text-foreground/60">
-            {result.filename} · {result.pageCount} {result.pageCount === 1 ? "page" : "pages"}
-          </p>
-        </div>
-        <div className="border-l-2 border-emerald-500 px-5 py-2 text-foreground/60">
-          The extracted document is ready. The explanation interface will appear here.
-        </div>
-      </div>
-    );
+    return <SessionWorkspace filename={result.filename} pageCount={result.pageCount} />;
   }
 
   return (
