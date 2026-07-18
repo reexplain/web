@@ -4,20 +4,29 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LoaderCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { readApiResponse } from "@/lib/api-response";
 import { clearStagedPdf, getStagedPdf } from "@/lib/staged-pdf";
 import SessionWorkspace from "@/components/common/SessionWorkspace";
+import type { ExplainWorkflowProps, ExtractionResult } from "@/types/pdf";
 
-type ExtractionResult = {
-  filename: string;
-  pageCount: number;
-};
+const PROCESSING_STAGES = [
+  "Reading your PDF",
+  "Extracting document structure",
+  "Extracting key concepts",
+] as const;
+const PROCESSING_STAGE_DURATION_MS = 3_500;
 
-const ExplainWorkflow = () => {
+const ExplainWorkflow = ({ existingSessionId }: ExplainWorkflowProps) => {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState("");
+  const [processingStage, setProcessingStage] = useState(0);
 
   useEffect(() => {
+    if (existingSessionId) {
+      return;
+    }
+
     const controller = new AbortController();
     let active = true;
 
@@ -40,16 +49,20 @@ const ExplainWorkflow = () => {
           body: form,
           signal: controller.signal,
         });
-        const body = await response.json();
-
-        if (!response.ok) {
-          throw new Error(body.error ?? "The PDF could not be extracted.");
-        }
+        const body = (await readApiResponse(
+          response,
+          "The PDF could not be extracted.",
+        )) as Record<string, unknown>;
 
         await clearStagedPdf();
 
         if (active) {
-          setResult({ filename: body.filename, pageCount: body.page_count });
+          setResult({
+            filename: body.filename as string,
+            pageCount: body.page_count as number,
+            documentId: body.document_id as string,
+            learningSessionId: body.learning_session_id as string,
+          });
         }
       } catch (extractionError) {
         if (active && !controller.signal.aborted) {
@@ -68,11 +81,25 @@ const ExplainWorkflow = () => {
       active = false;
       controller.abort();
     };
-  }, [attempt]);
+  }, [attempt, existingSessionId]);
+
+  useEffect(() => {
+    if (existingSessionId || result || error) return;
+
+    const interval = window.setInterval(() => {
+      setProcessingStage((current) => (current + 1) % PROCESSING_STAGES.length);
+    }, PROCESSING_STAGE_DURATION_MS);
+
+    return () => window.clearInterval(interval);
+  }, [error, existingSessionId, result]);
+
+  if (existingSessionId) {
+    return <SessionWorkspace learningSessionId={existingSessionId} />;
+  }
 
   if (error) {
     return (
-      <div className="flex max-w-xl flex-col gap-5 border-l-2 border-destructive px-5 py-2">
+      <div className="flex flex-col gap-5 border-l-2 border-destructive px-5 py-2">
         <div className="flex flex-col gap-2">
           <h1 className="font-secondary text-3xl font-medium">Extraction stopped</h1>
           <p className="leading-relaxed text-foreground/60" role="alert">{error}</p>
@@ -91,22 +118,34 @@ const ExplainWorkflow = () => {
   }
 
   if (result) {
-    return <SessionWorkspace filename={result.filename} pageCount={result.pageCount} />;
+    return (
+      <SessionWorkspace
+        filename={result.filename}
+        learningSessionId={result.learningSessionId}
+        pageCount={result.pageCount}
+      />
+    );
   }
 
   return (
-    <div className="flex max-w-xl items-start gap-5" role="status" aria-live="polite">
+    <div className="flex max-w-xl items-start gap-5" role="status">
+      <span className="sr-only">
+        Preparing your PDF for a learning session. This usually takes about a minute.
+      </span>
       <LoaderCircle
         aria-hidden="true"
         className="size-9 shrink-0 animate-spin text-emerald-500 motion-reduce:animate-none"
         strokeWidth={1.7}
       />
       <div className="flex flex-col gap-2">
-        <h1 className="font-secondary text-3xl font-medium sm:text-4xl">
-          Reading your PDF
+        <h1
+          aria-hidden="true"
+          className="font-secondary text-3xl font-medium sm:text-4xl"
+        >
+          {PROCESSING_STAGES[processingStage]}
         </h1>
         <p className="leading-relaxed text-foreground/60">
-          Extracting the document text and page structure.
+          Preparing your learning session. This usually takes about a minute.
         </p>
       </div>
     </div>

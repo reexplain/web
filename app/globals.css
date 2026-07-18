@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@xyflow/react/dist/style.css";
 @source "../components";
 
 @custom-variant dark (&:is(.dark *));
@@ -143,12 +144,12 @@
   }
 
   .upload-shell {
-    @apply overflow-hidden border-2 border-emerald-500 bg-background;
-    box-shadow: 7px 7px 0 #d9f99d;
+    @apply overflow-hidden border-2 border-emerald-500 bg-emerald-50;
+    box-shadow: 7px 7px 0 #d1fae5;
   }
 
   .upload-dropzone {
-    @apply relative m-0 flex w-full items-center bg-background;
+    @apply relative m-0 flex w-full items-center bg-transparent;
   }
 
   .upload-shell-active {

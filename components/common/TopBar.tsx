@@ -1,12 +1,11 @@
-import { APP_NAME } from "@/utils/constants";
+import { APP_NAME } from "@/constants/app";
 import AuthControls from "@/components/common/AuthControls";
 import Image from "next/image";
 import Link from "next/link";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { getCurrentSession } from "@/lib/current-session";
 
 const TopBar = async () => {
-    const session = await auth.api.getSession({ headers: await headers() });
+    const session = await getCurrentSession();
 
     return (
         <div className="flex items-center justify-between">

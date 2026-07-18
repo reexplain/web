@@ -1,13 +1,8 @@
+import type { StagedPdfRecord } from "@/types/pdf";
+
 const DATABASE_NAME = "reexplain-uploads";
 const STORE_NAME = "files";
 const STAGED_PDF_KEY = "current-pdf";
-
-type StagedPdfRecord = {
-  blob: Blob;
-  name: string;
-  type: string;
-  lastModified: number;
-};
 
 const openDatabase = () =>
   new Promise<IDBDatabase>((resolve, reject) => {

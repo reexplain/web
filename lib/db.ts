@@ -1,8 +1,7 @@
 import { Pool } from "pg";
+import type { DatabaseGlobal } from "@/types/database";
 
-const globalForDatabase = globalThis as typeof globalThis & {
-  authPool?: Pool;
-};
+const globalForDatabase = globalThis as DatabaseGlobal;
 
 export const authPool =
   globalForDatabase.authPool ??

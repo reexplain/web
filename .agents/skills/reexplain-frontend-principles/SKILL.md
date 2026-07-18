@@ -41,6 +41,13 @@ Use this skill for all user-facing ReExplain interface work.
 - Never use `mt-*` or `mb-*` utilities in authored UI. Express vertical spacing with parent `gap-*` or `space-*` composition.
 - Verify long text, keyboard focus, reduced motion, and mobile layouts before considering a page complete.
 
+## Component Testing
+
+- Every new component must include a colocated Jest test named `<Component>.test.tsx` in the same folder.
+- Cover the component's primary rendered state and each user-visible interaction or conditional state it introduces.
+- Mock server, network, auth, and router boundaries; test the component's own behavior and accessible output.
+- Run the relevant Jest test before completion. Run the full test suite when shared components or shared UI primitives change.
+
 ## Review Checklist
 
 1. Clash Grotesk appears only in display or brand roles.
@@ -52,3 +59,4 @@ Use this skill for all user-facing ReExplain interface work.
 7. Brand names and canonical descriptions come from `utils/constants.ts`.
 8. Brand accents use emerald, with `emerald-500` as the primary value.
 9. Corner radii come from global Tailwind theme tokens, without local `rounded-none` overrides.
+10. Every newly created component has a colocated Jest test that covers its primary behavior.

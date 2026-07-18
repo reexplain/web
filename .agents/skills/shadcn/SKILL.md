@@ -58,6 +58,7 @@ These rules are **always enforced**. Each links to a file with Incorrect/Correct
 - **Button has no `isPending`/`isLoading`.** Compose with `Spinner` + `data-icon` + `disabled`.
 - **`TabsTrigger` must be inside `TabsList`.** Never render triggers directly in `Tabs`.
 - **`Avatar` always needs `AvatarFallback`.** For when the image fails to load.
+- **Every new component needs a colocated Jest test.** Cover its primary rendered state and public interactions; mock only external boundaries.
 
 ### Use Components, Not Custom Markup → [composition.md](./rules/composition.md)
 

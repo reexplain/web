@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import LoginDialog from "@/components/common/LoginDialog";
-
-type AuthControlsProps = {
-    isAuthenticated: boolean;
-};
+import type { AuthControlsProps } from "@/types/auth";
 
 const AuthControls = ({ isAuthenticated }: AuthControlsProps) => {
     const router = useRouter();

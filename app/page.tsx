@@ -1,11 +1,23 @@
-import { headers } from "next/headers";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import TopBar from "@/components/common/TopBar";
 import PdfUploadBox from "@/components/common/PdfUploadBox";
-import { auth } from "@/lib/auth";
-import { APP_DESCRIPTION } from "@/utils/constants";
+import { getCurrentSession } from "@/lib/current-session";
+import { APP_DESCRIPTION } from "@/constants/app";
+import { AUTH_DEFAULT_REDIRECT } from "@/constants/auth";
+import { HOME_PAGE_DESCRIPTION, HOME_PAGE_TITLE } from "@/constants/metadata";
+
+export const metadata: Metadata = {
+  title: HOME_PAGE_TITLE,
+  description: HOME_PAGE_DESCRIPTION,
+};
 
 const Home = async () => {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getCurrentSession();
+
+  if (session) {
+    redirect(AUTH_DEFAULT_REDIRECT);
+  }
 
   return (
     <>
@@ -27,7 +39,7 @@ const Home = async () => {
             </p>
           </div>
           <div className="flex flex-col gap-4">
-            <PdfUploadBox isAuthenticated={Boolean(session)} />
+            <PdfUploadBox isAuthenticated={false} />
             <div className="flex flex-wrap gap-2 text-xs text-foreground/50">
               <span>Powered by OpenAI</span>
               {/* <span>Private by default</span> */}

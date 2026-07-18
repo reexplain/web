@@ -16,24 +16,13 @@ import {
 import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { stagePdf } from "@/lib/staged-pdf";
-import { cn } from "@/lib/utils";
-import {
-    SESSION_ROUTE,
-    MAX_PDF_PAGE_COUNT,
-    MAX_PDF_SIZE_BYTES,
-    PDF_CONTENT_TYPE,
-    PDF_UPLOAD_DESCRIPTION,
-} from "@/utils/constants";
+import { MAX_PDF_PAGE_COUNT, MAX_PDF_SIZE_BYTES, PDF_CONTENT_TYPE, PDF_UPLOAD_DESCRIPTION } from "@/constants/pdf";
+import { SESSION_ROUTE } from "@/constants/routes";
+import type { PdfUploadBoxProps } from "@/types/pdf";
+import { formatFileSize } from "@/utils/pdf/format-file-size";
+import { cn } from "@/utils/ui/cn";
 
-const formatFileSize = (bytes: number) => {
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-};
-
-type PdfUploadBoxProps = {
-    isAuthenticated: boolean;
-};
-
-const PdfUploadBox = ({ isAuthenticated }: PdfUploadBoxProps) => {
+const PdfUploadBox = ({ className, isAuthenticated }: PdfUploadBoxProps) => {
     const router = useRouter();
     const inputRef = useRef<HTMLInputElement>(null);
     const dragDepthRef = useRef(0);
@@ -76,18 +65,19 @@ const PdfUploadBox = ({ isAuthenticated }: PdfUploadBoxProps) => {
 
         try {
             await stagePdf(file);
-
-            if (isAuthenticated) {
-                router.push(SESSION_ROUTE);
-                return;
-            }
-
-            setIsLoginOpen(true);
         } catch {
             setError("This browser could not prepare the PDF. Choose the file again.");
-        } finally {
             setIsPreparing(false);
+            return;
         }
+
+        if (isAuthenticated) {
+            router.push(SESSION_ROUTE);
+            return;
+        }
+
+        setIsLoginOpen(true);
+        setIsPreparing(false);
     };
 
     return (
@@ -96,6 +86,7 @@ const PdfUploadBox = ({ isAuthenticated }: PdfUploadBoxProps) => {
                 className={cn(
                     "upload-shell gap-0 py-0 shadow-none",
                     isDragging && "upload-shell-active",
+                    className,
                 )}
                 onDragEnter={(event) => {
                     event.preventDefault();

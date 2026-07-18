@@ -1,20 +1,31 @@
 import type { Metadata } from "next";
-import { APP_NAME, APP_DESCRIPTION } from "@/utils/constants";
+import { APP_DESCRIPTION, APP_NAME } from "@/constants/app";
 import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Toaster } from "@/components/ui/sonner";
+import ConvexClientProvider from "@/components/common/ConvexClientProvider";
+import type { RootLayoutProps } from "@/types/layout";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: APP_NAME,
+  title: {
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
+  },
   description: APP_DESCRIPTION,
+  openGraph: {
+    description: APP_DESCRIPTION,
+    siteName: APP_NAME,
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    description: APP_DESCRIPTION,
+  },
 };
 
-const RootLayout = ({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) => {
+const RootLayout = ({ children }: RootLayoutProps) => {
   return (
     <html lang="en">
       <head>
@@ -39,7 +50,10 @@ const RootLayout = ({
         <link rel="manifest" href="/favicons/site.webmanifest" />
       </head>
       <body className={`antialiased`}>
-        <div className="p-4 lg:p-6 mx-auto flex flex-col gap-4 min-h-screen max-w-[1440px]">{children}</div>
+        <ConvexClientProvider>
+          <div className="p-4 lg:p-6 mx-auto flex flex-col gap-4 min-h-screen max-w-[1440px]">{children}</div>
+        </ConvexClientProvider>
+        <Toaster position="top-right" richColors />
         <Analytics />
         <SpeedInsights />
       </body>
