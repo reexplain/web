@@ -137,7 +137,7 @@ const PdfUploadBox = ({ className, isAuthenticated }: PdfUploadBoxProps) => {
                         {file ? (
                             <div className="flex w-full gap-4 items-center">
                                 <div className="flex min-w-0 flex-1 items-center gap-4">
-                                    <div className="grid size-12 shrink-0 place-items-center bg-emerald-50 text-emerald-600">
+                                    <div className="grid size-12 shrink-0 place-items-center bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
                                         <FileText aria-hidden="true" className="size-6" strokeWidth={1.7} />
                                     </div>
                                     <div className="flex min-w-0 flex-col gap-1">
@@ -193,11 +193,11 @@ const PdfUploadBox = ({ className, isAuthenticated }: PdfUploadBoxProps) => {
                     >
                         {file ? (
                             <Button
-                                className="bg-emerald-500 text-white hover:bg-emerald-600"
+                                className="bg-emerald-500 dark:bg-emerald-600 text-white hover:bg-emerald-600 dark:hover:bg-emerald-700"
                                 disabled={isPreparing}
                                 onClick={startExplanation}
                             >
-                                {isPreparing ? "Extracting PDF..." : "Explain this PDF"}
+                                {isPreparing ? "Extracting PDF..." : "Begin a learning session"}
                                 <ArrowRight aria-hidden="true" data-icon="inline-end" />
                             </Button>
                         ) : (

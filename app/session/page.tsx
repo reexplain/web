@@ -30,15 +30,19 @@ const SessionPage = async (
     );
   }
 
-  const requestedId = (await searchParams).id;
+  const { id: requestedId, view } = await searchParams;
   const existingSessionId = typeof requestedId === "string" ? requestedId : undefined;
+  const initialView = view === "summary" ? "summary" : "workspace";
 
   return (
     <>
       <TopBar />
-      <main className="flex flex-1 py-4 sm:py-6">
-        <div className="m-auto">
-          <ExplainWorkflow existingSessionId={existingSessionId} />
+      <main className="flex min-h-0 w-full flex-1 py-4 sm:py-6">
+        <div className="m-auto w-full min-w-0">
+          <ExplainWorkflow
+            existingSessionId={existingSessionId}
+            initialView={initialView}
+          />
         </div>
       </main>
     </>

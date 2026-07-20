@@ -4,6 +4,7 @@ import type { WorkspaceResponse } from "@/types/session";
 
 const workspace: WorkspaceResponse = {
   status: "completed",
+  activeDurationMs: 600_000,
   startedAt: 1_000,
   completedAt: 601_000,
   document: { filename: "algorithms.pdf", pageCount: 25 },

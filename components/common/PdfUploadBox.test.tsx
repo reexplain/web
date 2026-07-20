@@ -33,7 +33,7 @@ describe("PdfUploadBox", () => {
     fireEvent.change(input, {
       target: { files: [new File(["pdf"], "study.pdf", { type: "application/pdf" })] },
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Explain this PDF" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Begin a learning session" }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/session"));
     expect(stagePdf).toHaveBeenCalled();

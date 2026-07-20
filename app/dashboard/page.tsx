@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { internal } from "@/convex/_generated/api";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import PracticeConcepts from "@/components/dashboard/PracticeConcepts";
-import SavedSessions from "@/components/dashboard/SavedSessions";
-import MasteryGraph from "@/components/dashboard/MasteryGraph";
+import DashboardRealtime from "@/components/dashboard/DashboardRealtime";
 import PdfUploadBox from "@/components/common/PdfUploadBox";
 import { getCurrentSession } from "@/lib/current-session";
 import { queryConvexInternal } from "@/lib/convex-server";
@@ -29,21 +27,20 @@ const DashboardPage = async () => {
     );
   }
 
-  const [savedSessions, practiceExcerpts, masteryGraph] = await Promise.all([
-    queryConvexInternal(internal.sessions.listForOwner, {
-      ownerId: session.user.id,
-    }).catch(() => []),
-    queryConvexInternal(internal.sessions.getPracticeForOwner, {
-      ownerId: session.user.id,
-    }).catch(() => []),
-    queryConvexInternal(internal.mastery.getForOwner, {
-      ownerId: session.user.id,
-    }).catch(() => ({ nodes: [], edges: [] })),
-  ]);
+  const dashboardSnapshot = await queryConvexInternal(
+    internal.sessions.getDashboardForOwner,
+    { ownerId: session.user.id },
+  );
 
   return (
     <div className="relative left-1/2 flex w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-5 lg:w-[calc(100vw-3rem)] lg:flex-row lg:items-start">
-      <DashboardSidebar />
+      <DashboardSidebar
+        user={{
+          email: session.user.email,
+          image: session.user.image,
+          name: session.user.name,
+        }}
+      />
 
       <main className="min-w-0 flex-1 pb-6">
         <div className="flex w-full flex-col gap-14 px-1 py-6 sm:px-4 lg:px-8 lg:pb-8 lg:pt-0 2xl:px-12">
@@ -65,17 +62,13 @@ const DashboardPage = async () => {
             </div>
             <div className="w-full">
               <PdfUploadBox
-                className="shadow-[7px_7px_0_#d1fae5]"
+                className="shadow-[7px_7px_0_#d1fae5] dark:shadow-[7px_7px_0_#064e3b]"
                 isAuthenticated
               />
             </div>
           </section>
 
-          <MasteryGraph initialGraph={masteryGraph} />
-
-          <PracticeConcepts initialExcerpts={practiceExcerpts} />
-
-          <SavedSessions initialSessions={savedSessions} />
+          <DashboardRealtime initialSnapshot={dashboardSnapshot} />
         </div>
       </main>
     </div>

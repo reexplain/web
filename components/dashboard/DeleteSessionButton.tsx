@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LoaderCircle, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,21 +15,47 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import type { DashboardSnapshot, DeleteSessionButtonProps } from "@/types/dashboard";
+import { cn } from "@/utils/ui/cn";
 
-type DeleteSessionButtonProps = {
-  filename: string;
-  onDeleted: (sessionId: string) => void;
-  sessionId: string;
+const isDashboardSnapshot = (value: unknown): value is DashboardSnapshot => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<DashboardSnapshot>;
+  return (
+    Array.isArray(candidate.sessions) &&
+    Array.isArray(candidate.practiceExcerpts) &&
+    Boolean(candidate.masteryGraph) &&
+    Array.isArray(candidate.masteryGraph?.nodes) &&
+    Array.isArray(candidate.masteryGraph?.edges)
+  );
 };
 
-const readError = async (response: Response) => {
+const readResponse = async (response: Response) => {
   const body: unknown = await response.json().catch(() => null);
-  return body && typeof body === "object" && "error" in body && typeof body.error === "string"
-    ? body.error
-    : "The session could not be deleted.";
+  if (!response.ok) {
+    const message = body && typeof body === "object" && "error" in body && typeof body.error === "string"
+      ? body.error
+      : "The session could not be deleted.";
+    throw new Error(message);
+  }
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("dashboardSnapshot" in body) ||
+    !isDashboardSnapshot(body.dashboardSnapshot)
+  ) {
+    throw new Error("The dashboard could not be refreshed after deletion.");
+  }
+  return body.dashboardSnapshot;
 };
 
-const DeleteSessionButton = ({ filename, onDeleted, sessionId }: DeleteSessionButtonProps) => {
+const DeleteSessionButton = ({
+  className,
+  filename,
+  onDeleted,
+  sessionId,
+}: DeleteSessionButtonProps) => {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -41,11 +68,12 @@ const DeleteSessionButton = ({ filename, onDeleted, sessionId }: DeleteSessionBu
         `/api/learning-sessions/${encodeURIComponent(sessionId)}`,
         { method: "DELETE" },
       );
-      if (!response.ok) throw new Error(await readError(response));
+      const dashboardSnapshot = await readResponse(response);
 
-      onDeleted(sessionId);
+      onDeleted(dashboardSnapshot);
       setIsOpen(false);
       toast.success("Session deleted.");
+      router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "The session could not be deleted.",
@@ -60,12 +88,11 @@ const DeleteSessionButton = ({ filename, onDeleted, sessionId }: DeleteSessionBu
       <DialogTrigger asChild>
         <Button
           aria-label={`Delete session for ${filename}`}
-          className="absolute bottom-3 right-3 text-foreground/50 hover:bg-destructive/10 hover:text-destructive"
-          size="icon-sm"
-          title="Delete session"
-          variant="ghost"
+          className={cn(className)}
+          variant="destructive"
         >
-          <Trash2 aria-hidden="true" />
+          <Trash2 aria-hidden="true" data-icon="inline-start" />
+          Delete session
         </Button>
       </DialogTrigger>
       <DialogContent>

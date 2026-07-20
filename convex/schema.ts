@@ -92,6 +92,7 @@ export default defineSchema({
     totalConceptCount: v.number(),
     understandingScore: v.optional(v.number()),
     confidenceScore: v.optional(v.number()),
+    activeDurationMs: v.optional(v.number()),
     retakeOfSessionId: v.optional(v.id("learningSessions")),
     questionModel: v.string(),
     promptVersion: v.string(),

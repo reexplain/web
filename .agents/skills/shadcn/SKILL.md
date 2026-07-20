@@ -59,6 +59,7 @@ These rules are **always enforced**. Each links to a file with Incorrect/Correct
 - **`TabsTrigger` must be inside `TabsList`.** Never render triggers directly in `Tabs`.
 - **`Avatar` always needs `AvatarFallback`.** For when the image fails to load.
 - **Every new component needs a colocated Jest test.** Cover its primary rendered state and public interactions; mock only external boundaries.
+- **Keep types out of component files.** Put prop contracts and reusable type aliases in the appropriate feature file under `types/` and import them with `import type`.
 
 ### Use Components, Not Custom Markup → [composition.md](./rules/composition.md)
 

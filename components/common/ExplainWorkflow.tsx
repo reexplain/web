@@ -16,7 +16,7 @@ const PROCESSING_STAGES = [
 ] as const;
 const PROCESSING_STAGE_DURATION_MS = 3_500;
 
-const ExplainWorkflow = ({ existingSessionId }: ExplainWorkflowProps) => {
+const ExplainWorkflow = ({ existingSessionId, initialView }: ExplainWorkflowProps) => {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState("");
@@ -64,12 +64,13 @@ const ExplainWorkflow = ({ existingSessionId }: ExplainWorkflowProps) => {
             learningSessionId: body.learning_session_id as string,
           });
         }
-      } catch (extractionError) {
+      } catch (error) {
         if (active && !controller.signal.aborted) {
+          const message = error instanceof Error ? error.message : "";
           setError(
-            extractionError instanceof Error
-              ? extractionError.message
-              : "The PDF could not be extracted.",
+            message.includes("learning material") || message.includes("extractable text")
+              ? message
+              : "Something went wrong while preparing your learning session. Please try again.",
           );
         }
       }
@@ -94,14 +95,19 @@ const ExplainWorkflow = ({ existingSessionId }: ExplainWorkflowProps) => {
   }, [error, existingSessionId, result]);
 
   if (existingSessionId) {
-    return <SessionWorkspace learningSessionId={existingSessionId} />;
+    return (
+      <SessionWorkspace
+        initialView={initialView}
+        learningSessionId={existingSessionId}
+      />
+    );
   }
 
   if (error) {
     return (
       <div className="flex flex-col gap-5 border-l-2 border-destructive px-5 py-2">
         <div className="flex flex-col gap-2">
-          <h1 className="font-secondary text-3xl font-medium">Extraction stopped</h1>
+          <h1 className="font-secondary text-3xl font-medium">Something went wrong</h1>
           <p className="leading-relaxed text-foreground/60" role="alert">{error}</p>
         </div>
         <div className="flex flex-wrap gap-3">

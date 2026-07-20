@@ -9,8 +9,8 @@ describe("Reorder", () => {
       { id: "3", excerpt: "Third extracted passage.", sequence: 2 },
     ]} />);
 
-    expect(screen.getByText("Build the explanation in a logical sequence")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Reorder steps" })).toHaveClass("overflow-y-auto");
+    expect(screen.getByText("Put the statements in order")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Reorder steps" })).not.toHaveClass("overflow-y-auto");
     expect(screen.queryByText(/source|session/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Move step 1 down" }));
     fireEvent.click(screen.getByRole("button", { name: "Move step 2 down" }));

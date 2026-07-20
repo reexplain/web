@@ -20,8 +20,15 @@ const mockGetSession = auth.api.getSession as unknown as jest.Mock;
 const mockMutateConvexInternal = mutateConvexInternal as jest.Mock;
 const mockQueryConvexInternal = queryConvexInternal as jest.Mock;
 const context = { params: Promise.resolve({ sessionId: "learning-session-id" }) };
+const emptyDashboardSnapshot = {
+  sessions: [],
+  practiceExcerpts: [],
+  masteryGraph: { nodes: [], edges: [] },
+};
 
 describe("GET /api/learning-sessions/:sessionId", () => {
+  beforeEach(() => jest.clearAllMocks());
+
   it("rejects unauthenticated requests", async () => {
     mockGetSession.mockResolvedValue(null);
 
@@ -36,7 +43,7 @@ describe("GET /api/learning-sessions/:sessionId", () => {
 
   it("loads the session using the Better Auth user ID", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "better-auth-user-id" } });
-    mockQueryConvexInternal.mockResolvedValue({ status: "active", turns: [] });
+    mockQueryConvexInternal.mockResolvedValue({ status: "active", turns: [], concepts: [] });
 
     const response = await GET(
       new Request("http://localhost/api/learning-sessions/learning-session-id"),
@@ -52,7 +59,32 @@ describe("GET /api/learning-sessions/:sessionId", () => {
 
   it("reactivates a legacy unfinished session when it is opened", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "better-auth-user-id" } });
-    mockQueryConvexInternal.mockResolvedValue({ status: "abandoned", turns: [] });
+    mockQueryConvexInternal.mockResolvedValue({
+      status: "abandoned",
+      turns: [],
+      concepts: [],
+    });
+    mockMutateConvexInternal.mockResolvedValue(null);
+
+    const response = await GET(
+      new Request("http://localhost/api/learning-sessions/learning-session-id"),
+      context,
+    );
+
+    expect(mockMutateConvexInternal).toHaveBeenCalledWith(
+      internal.sessions.resumeLegacySession,
+      { ownerId: "better-auth-user-id", sessionId: "learning-session-id" },
+    );
+    await expect(response.json()).resolves.toMatchObject({ status: "active" });
+  });
+
+  it("reactivates a prematurely completed session when it is opened", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "better-auth-user-id" } });
+    mockQueryConvexInternal.mockResolvedValue({
+      status: "completed",
+      turns: [],
+      concepts: [{ name: "Paging", state: "developing" }],
+    });
     mockMutateConvexInternal.mockResolvedValue(null);
 
     const response = await GET(
@@ -69,17 +101,21 @@ describe("GET /api/learning-sessions/:sessionId", () => {
 });
 
 describe("DELETE /api/learning-sessions/:sessionId", () => {
+  beforeEach(() => jest.clearAllMocks());
+
   it("deletes the session using the Better Auth user ID", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "better-auth-user-id" } });
     mockMutateConvexInternal.mockResolvedValue(null);
-    mockQueryConvexInternal.mockResolvedValue({
-      status: "active",
-      startedAt: 100,
-      turns: [],
-      concepts: [],
-      evidence: [],
-      openQuestions: [],
-    });
+    mockQueryConvexInternal
+      .mockResolvedValueOnce({
+        status: "active",
+        startedAt: 100,
+        turns: [],
+        concepts: [],
+        evidence: [],
+        openQuestions: [],
+      })
+      .mockResolvedValueOnce(emptyDashboardSnapshot);
 
     const response = await DELETE(
       new Request("http://localhost/api/learning-sessions/learning-session-id", {
@@ -93,7 +129,14 @@ describe("DELETE /api/learning-sessions/:sessionId", () => {
       ownerId: "better-auth-user-id",
       sessionId: "learning-session-id",
     });
-    await expect(response.json()).resolves.toEqual({ status: "deleted" });
+    expect(mockQueryConvexInternal).toHaveBeenLastCalledWith(
+      internal.sessions.getDashboardForOwner,
+      { ownerId: "better-auth-user-id" },
+    );
+    await expect(response.json()).resolves.toEqual({
+      status: "deleted",
+      dashboardSnapshot: emptyDashboardSnapshot,
+    });
   });
 
   it("does not report failure when dashboard revalidation fails", async () => {
@@ -104,14 +147,16 @@ describe("DELETE /api/learning-sessions/:sessionId", () => {
       throw new Error("cache unavailable");
     });
     mockGetSession.mockResolvedValue({ user: { id: "better-auth-user-id" } });
-    mockQueryConvexInternal.mockResolvedValue({
-      status: "active",
-      startedAt: 100,
-      turns: [],
-      concepts: [],
-      evidence: [],
-      openQuestions: [],
-    });
+    mockQueryConvexInternal
+      .mockResolvedValueOnce({
+        status: "active",
+        startedAt: 100,
+        turns: [],
+        concepts: [],
+        evidence: [],
+        openQuestions: [],
+      })
+      .mockResolvedValueOnce(emptyDashboardSnapshot);
     mockMutateConvexInternal.mockResolvedValue(null);
 
     const response = await DELETE(
@@ -122,6 +167,9 @@ describe("DELETE /api/learning-sessions/:sessionId", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ status: "deleted" });
+    await expect(response.json()).resolves.toEqual({
+      status: "deleted",
+      dashboardSnapshot: emptyDashboardSnapshot,
+    });
   });
 });

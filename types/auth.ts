@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 export type AuthControlsProps = {
+  iconOnly?: boolean;
   isAuthenticated: boolean;
 };
 

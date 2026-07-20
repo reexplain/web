@@ -1,0 +1,3 @@
+export const MAX_SESSION_INPUT_LENGTH = 4_000;
+export const MAX_VOICE_DURATION_SECONDS = 2 * 60;
+export const MAX_SESSION_ACTIVE_DURATION_MS = 24 * 60 * 60 * 1_000;

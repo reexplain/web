@@ -1,25 +1,31 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { useConvexAuth, useQuery } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
-import { api } from "@/convex/_generated/api";
 import SavedSessions from "@/components/dashboard/SavedSessions";
+import type {
+  DashboardSnapshot,
+  DeleteSessionButtonProps,
+  SavedSession,
+} from "@/types/dashboard";
 
-jest.mock("convex/react", () => ({
-  useConvexAuth: jest.fn(),
-  useQuery: jest.fn(),
-}));
+const emptyDashboardSnapshot = {
+  sessions: [],
+  practiceExcerpts: [],
+  masteryGraph: { nodes: [], edges: [] },
+} as DashboardSnapshot;
+
 jest.mock("@/components/dashboard/DeleteSessionButton", () =>
-  function DeleteSessionButtonMock({ filename, onDeleted, sessionId }: {
-    filename: string;
-    onDeleted: (sessionId: string) => void;
-    sessionId: string;
-  }) {
-    return <button onClick={() => onDeleted(sessionId)}>Delete {filename}</button>;
+  function DeleteSessionButtonMock({ className, filename, onDeleted }: DeleteSessionButtonProps) {
+    return (
+      <button
+        className={className}
+        onClick={() => onDeleted(emptyDashboardSnapshot)}
+      >
+        Delete {filename}
+      </button>
+    );
   },
 );
 
-const mockUseQuery = useQuery as jest.Mock;
-const mockUseConvexAuth = useConvexAuth as jest.Mock;
 const initialSessions = [{
   id: "session-1" as Id<"learningSessions">,
   documentId: "document-1" as Id<"documents">,
@@ -27,49 +33,98 @@ const initialSessions = [{
   pageCount: 4,
   status: "active" as const,
   documentStatus: "ready" as const,
+  understandingScore: 72,
+  conceptCount: 2,
+  summary: "The learner connected virtual memory to address translation.",
+  concepts: [
+    { name: "Virtual memory", state: "demonstrated" as const, score: 88 },
+    { name: "Address translation", state: "developing" as const, score: 55 },
+  ],
   updatedAt: 1,
 }];
 
 describe("SavedSessions", () => {
-  it("uses the server result while the Convex subscription connects", () => {
-    mockUseConvexAuth.mockReturnValue({ isAuthenticated: false, isLoading: true });
-    mockUseQuery.mockReturnValue(undefined);
+  it("renders supplied sessions", () => {
+    render(<SavedSessions onSnapshotChange={jest.fn()} sessions={initialSessions} />);
 
-    render(<SavedSessions initialSessions={initialSessions} />);
-
-    expect(mockUseQuery).toHaveBeenCalledWith(api.sessions.listCurrentUser, "skip");
+    expect(
+      screen.getByRole("heading", { name: "Saved learning sessions" }).closest("section"),
+    ).toHaveClass("scroll-mt-40", "lg:scroll-mt-8");
     expect(screen.getByText("initial.pdf")).toBeInTheDocument();
     expect(screen.getByText("1 session")).toBeInTheDocument();
+    expect(screen.getByText("72%")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Continue session" })).toHaveAttribute(
+      "href",
+      "/session?id=session-1",
+    );
+    expect(screen.getByRole("link", { name: "Continue session" })).toHaveClass(
+      "w-full",
+      "md:w-auto",
+    );
+    expect(screen.getByRole("link", { name: "View session summary" })).toHaveAttribute(
+      "href",
+      "/session?id=session-1&view=summary",
+    );
+    expect(screen.getByRole("link", { name: "View session summary" })).toHaveClass(
+      "w-full",
+      "md:w-auto",
+    );
+    expect(screen.getByRole("button", { name: "Delete initial.pdf" })).toHaveClass(
+      "w-full",
+      "md:w-auto",
+    );
   });
 
-  it("replaces stale sessions with the live Convex result", () => {
-    mockUseConvexAuth.mockReturnValue({ isAuthenticated: true, isLoading: false });
-    mockUseQuery.mockReturnValue([]);
+  it("shows the empty state for an empty realtime snapshot", () => {
+    render(<SavedSessions onSnapshotChange={jest.fn()} sessions={[]} />);
 
-    render(<SavedSessions initialSessions={initialSessions} />);
-
-    expect(mockUseQuery).toHaveBeenCalledWith(api.sessions.listCurrentUser, {});
     expect(screen.queryByText("initial.pdf")).not.toBeInTheDocument();
     expect(screen.getByText("No saved sessions yet")).toBeInTheDocument();
     expect(screen.getByText("0 sessions")).toBeInTheDocument();
   });
 
-  it("removes a confirmed deletion before the subscription refreshes", () => {
-    mockUseConvexAuth.mockReturnValue({ isAuthenticated: true, isLoading: false });
-    mockUseQuery.mockReturnValue(initialSessions);
+  it("handles legacy session snapshots without concepts", () => {
+    const legacySession = {
+      ...initialSessions[0],
+      conceptCount: undefined,
+      concepts: undefined,
+    } as unknown as SavedSession;
 
-    render(<SavedSessions initialSessions={initialSessions} />);
+    render(
+      <SavedSessions
+        onSnapshotChange={jest.fn()}
+        sessions={[legacySession]}
+      />,
+    );
+
+    expect(screen.getByText("Concepts").nextElementSibling).toHaveTextContent("0");
+  });
+
+  it("forwards the authoritative snapshot after deletion", () => {
+    const onSnapshotChange = jest.fn();
+    render(
+      <SavedSessions
+        onSnapshotChange={onSnapshotChange}
+        sessions={initialSessions}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Delete initial.pdf" }));
 
-    expect(screen.queryByText("initial.pdf")).not.toBeInTheDocument();
-    expect(screen.getByText("No saved sessions yet")).toBeInTheDocument();
+    expect(onSnapshotChange).toHaveBeenCalledWith(emptyDashboardSnapshot);
   });
 
   it("keeps legacy unfinished sessions labeled as in progress", () => {
-    mockUseConvexAuth.mockReturnValue({ isAuthenticated: true, isLoading: false });
-    mockUseQuery.mockReturnValue([{ ...initialSessions[0], status: "abandoned" }]);
+    const legacySession = {
+      ...initialSessions[0],
+      status: "abandoned",
+    } as unknown as SavedSession;
 
-    render(<SavedSessions initialSessions={initialSessions} />);
+    render(
+      <SavedSessions
+        onSnapshotChange={jest.fn()}
+        sessions={[legacySession]}
+      />,
+    );
 
     expect(screen.getByText("In progress")).toBeInTheDocument();
     expect(screen.queryByText("Ended")).not.toBeInTheDocument();

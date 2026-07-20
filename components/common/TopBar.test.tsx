@@ -10,6 +10,9 @@ jest.mock("next/image", () => function ImageMock({ alt }: { alt: string }) {
 jest.mock("@/components/common/AuthControls", () => function AuthControlsMock({ isAuthenticated }: { isAuthenticated: boolean }) {
   return <span>{isAuthenticated ? "Authenticated" : "Anonymous"}</span>;
 });
+jest.mock("@/components/common/ThemeToggle", () => function ThemeToggleMock() {
+  return <span>Theme toggle</span>;
+});
 
 describe("TopBar", () => {
   it("links signed-in users to the dashboard", async () => {

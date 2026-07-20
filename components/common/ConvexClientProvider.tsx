@@ -11,6 +11,10 @@ if (!convexUrl) {
 }
 
 const convex = new ConvexReactClient(convexUrl);
+const fetchAccessToken = async () => {
+  const { data } = await authClient.token();
+  return data?.token ?? null;
+};
 
 const useBetterAuth = () => {
   const { data: session, isPending } = authClient.useSession();
@@ -18,10 +22,7 @@ const useBetterAuth = () => {
   return {
     isLoading: isPending,
     isAuthenticated: Boolean(session),
-    fetchAccessToken: async () => {
-      const { data } = await authClient.token();
-      return data?.token ?? null;
-    },
+    fetchAccessToken,
   };
 };
 

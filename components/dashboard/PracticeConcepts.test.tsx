@@ -1,74 +1,57 @@
 import { render, screen } from "@testing-library/react";
-import { useConvexAuth, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import PracticeConcepts from "@/components/dashboard/PracticeConcepts";
 
-jest.mock("convex/react", () => ({
-  useConvexAuth: jest.fn(),
-  useQuery: jest.fn(),
-}));
 jest.mock("@/components/dashboard/Flashcard", () =>
-  function FlashcardMock({ item }: { item: { excerpt: string } }) {
-    return <div>Flashcard: {item.excerpt}</div>;
+  function FlashcardMock({ item }: { item: { id: string; excerpt: string } }) {
+    return <div>Flashcard: {item.id} {item.excerpt}</div>;
   },
 );
 jest.mock("@/components/dashboard/Quiz", () =>
-  function QuizMock() {
-    return <div>Quiz</div>;
-  },
-);
-jest.mock("@/components/dashboard/Reorder", () =>
-  function ReorderMock() {
-    return <div>Reorder</div>;
+  function QuizMock({ items }: { items: Array<{ id: string }> }) {
+    return <div>Quiz: {items.map((item) => item.id).join(",")}</div>;
   },
 );
 
-const mockUseQuery = useQuery as jest.Mock;
-const mockUseConvexAuth = useConvexAuth as jest.Mock;
 const initialExcerpts = [
-  { id: "chunk-1" as Id<"documentChunks">, excerpt: "Initial concept", sequence: 0 },
-  { id: "chunk-2" as Id<"documentChunks">, excerpt: "Second concept", sequence: 1 },
-  { id: "chunk-3" as Id<"documentChunks">, excerpt: "Third concept", sequence: 2 },
+  { id: "chunk-1:0", excerpt: "Initial concept", sequence: 0 },
+  { id: "chunk-2:0", excerpt: "Second concept", sequence: 1 },
+  { id: "chunk-3:0", excerpt: "Third concept", sequence: 2 },
+  { id: "chunk-4:0", excerpt: "Fourth concept", sequence: 3 },
+  { id: "chunk-5:0", excerpt: "Fifth concept", sequence: 4 },
+  { id: "chunk-6:0", excerpt: "Sixth concept", sequence: 5 },
+  { id: "chunk-7:0", excerpt: "Seventh concept", sequence: 6 },
 ];
 
 describe("PracticeConcepts", () => {
-  it("uses server practice while Convex authentication connects", () => {
-    mockUseConvexAuth.mockReturnValue({ isAuthenticated: false, isLoading: true });
-    mockUseQuery.mockReturnValue(undefined);
+  it("renders the supplied practice statements", () => {
+    render(<PracticeConcepts excerpts={initialExcerpts} />);
 
-    render(<PracticeConcepts initialExcerpts={initialExcerpts} />);
-
-    expect(mockUseQuery).toHaveBeenCalledWith(
-      api.sessions.getPracticeCurrentUser,
-      "skip",
-    );
-    expect(screen.getByText("Flashcard: Initial concept")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Practice concepts" }).closest("section"))
+      .toHaveClass("scroll-mt-40", "lg:scroll-mt-8");
+    expect(screen.getByText("Flashcard: chunk-1:0 Initial concept")).toBeInTheDocument();
+    expect(screen.getByText("Quiz: chunk-2:0,chunk-3:0,chunk-4:0")).toBeInTheDocument();
+    expect(screen.queryByText(/reorder/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Practice activities")).toHaveClass("lg:grid-cols-2", "auto-rows-fr");
   });
 
-  it("removes deleted-session practice when the realtime query becomes empty", () => {
-    mockUseConvexAuth.mockReturnValue({ isAuthenticated: true, isLoading: false });
-    mockUseQuery.mockReturnValue([]);
+  it("shows the empty state when the realtime snapshot has no practice", () => {
+    render(<PracticeConcepts excerpts={[]} />);
 
-    render(<PracticeConcepts initialExcerpts={initialExcerpts} />);
-
-    expect(mockUseQuery).toHaveBeenCalledWith(
-      api.sessions.getPracticeCurrentUser,
-      {},
-    );
-    expect(screen.queryByText("Flashcard: Initial concept")).not.toBeInTheDocument();
-    expect(screen.getByText("Complete a session to unlock practice")).toBeInTheDocument();
+    expect(screen.queryByText("Flashcard: chunk-1:0 Initial concept")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Discuss a concept to unlock practice"),
+    ).toBeInTheDocument();
   });
 
-  it("switches to practice from the next completed session after deletion", () => {
-    mockUseConvexAuth.mockReturnValue({ isAuthenticated: true, isLoading: false });
-    mockUseQuery.mockReturnValue([
-      { id: "chunk-4", excerpt: "Replacement concept", sequence: 0 },
-    ]);
+  it("switches to replacement practice when props update", () => {
+    const { rerender } = render(<PracticeConcepts excerpts={initialExcerpts} />);
+    rerender(
+      <PracticeConcepts
+        excerpts={[{ id: "chunk-4:0", excerpt: "Replacement concept", sequence: 0 }]}
+      />,
+    );
 
-    render(<PracticeConcepts initialExcerpts={initialExcerpts} />);
-
-    expect(screen.getByText("Flashcard: Replacement concept")).toBeInTheDocument();
-    expect(screen.queryByText("Flashcard: Initial concept")).not.toBeInTheDocument();
+    expect(screen.getByText("Flashcard: chunk-4:0 Replacement concept")).toBeInTheDocument();
+    expect(screen.queryByText("Flashcard: chunk-1:0 Initial concept")).not.toBeInTheDocument();
   });
 });

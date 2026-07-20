@@ -9,17 +9,16 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Concept, WorkspaceEvidence, WorkspaceResponse } from "@/types/session";
+import type {
+  Concept,
+  EvidenceListProps,
+  SessionCompletionSummaryProps,
+} from "@/types/session";
 import { cn } from "@/utils/ui/cn";
 
-type SessionCompletionSummaryProps = {
-  onReview: () => void;
-  workspace: WorkspaceResponse;
-};
-
-const formatDuration = (startedAt: number, completedAt?: number) => {
-  if (!completedAt || completedAt <= startedAt) return "Saved just now";
-  const totalMinutes = Math.floor((completedAt - startedAt) / 60_000);
+const formatDuration = (activeDurationMs?: number) => {
+  if (activeDurationMs === undefined) return "No recorded time";
+  const totalMinutes = Math.floor(activeDurationMs / 60_000);
   if (totalMinutes < 1) return "Less than a minute";
   if (totalMinutes < 60) return `${totalMinutes} min`;
 
@@ -38,11 +37,7 @@ const EvidenceList = ({
   emptyMessage,
   evidence,
   tone,
-}: {
-  emptyMessage: string;
-  evidence: WorkspaceEvidence[];
-  tone: "strength" | "revisit";
-}) => (
+}: EvidenceListProps) => (
   <ul className="flex flex-col divide-y">
     {evidence.slice(0, 4).map((item) => (
       <li className="grid grid-cols-[1.25rem_1fr] gap-3 py-4" key={item.id}>
@@ -83,19 +78,18 @@ const SessionCompletionSummary = ({
   ).length;
   const strengths = workspace.evidence.filter((item) => item.kind === "supports");
   const revisits = workspace.evidence.filter((item) => item.kind !== "supports");
-  const hasFullCoverage =
-    workspace.concepts.length > 0 && demonstratedCount === workspace.concepts.length;
+  const isCompleted = workspace.status === "completed";
   const understandingScore = workspace.understandingScore ?? 0;
   const sortedConcepts = [...workspace.concepts].sort(
     (left, right) => (right.score ?? 0) - (left.score ?? 0),
   );
 
   return (
-    <div className="max-h-[calc(100dvh-9.5rem)] overflow-y-auto border bg-background shadow-[7px_7px_0_#d1fae5]">
-      <header className="grid gap-8 border-b bg-emerald-50 px-6 py-8 sm:px-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:px-12 lg:py-10">
+    <div className="max-h-[calc(100dvh-9.5rem)] overflow-y-auto border bg-background shadow-[7px_7px_0_#d1fae5] dark:shadow-[7px_7px_0_#064e3b]">
+      <header className="grid gap-8 border-b bg-emerald-50 px-6 py-8 sm:px-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:px-12 lg:py-10 dark:bg-emerald-950/50">
         <div className="flex max-w-3xl flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-700">
-            {hasFullCoverage ? "Session complete" : "Progress saved"}
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+            {isCompleted ? "Session complete" : "Progress saved"}
           </p>
           <div className="flex flex-col gap-2">
             <h1 className="font-secondary text-3xl font-medium sm:text-4xl">
@@ -110,7 +104,7 @@ const SessionCompletionSummary = ({
               "Your progress has been saved. Continue practicing the concepts that still need evidence."}
           </p>
         </div>
-        <div className="flex items-baseline gap-1 text-emerald-700">
+        <div className="flex items-baseline gap-1 text-emerald-700 dark:text-emerald-300">
           <span className="font-secondary text-7xl font-medium tabular-nums">
             {understandingScore}
           </span>
@@ -120,7 +114,7 @@ const SessionCompletionSummary = ({
 
       <section className="grid border-b sm:grid-cols-2 lg:grid-cols-4" aria-label="Session statistics">
         {[
-          { icon: Clock3, label: "Time invested", value: formatDuration(workspace.startedAt, workspace.completedAt) },
+          { icon: Clock3, label: "Time invested", value: formatDuration(workspace.activeDurationMs) },
           { icon: MessageSquareText, label: "Responses evaluated", value: String(learnerResponseCount) },
           { icon: BookOpen, label: "Concepts demonstrated", value: `${demonstratedCount} of ${workspace.concepts.length}` },
           { icon: Check, label: "Strong evidence", value: `${strengths.length} of ${workspace.evidence.length}` },
@@ -155,7 +149,7 @@ const SessionCompletionSummary = ({
                     </span>
                     <span className={cn(
                       "shrink-0 text-xs font-medium",
-                      concept.state === "demonstrated" && "text-emerald-700",
+                      concept.state === "demonstrated" && "text-emerald-700 dark:text-emerald-300",
                       concept.state === "developing" && "text-orange-600",
                       concept.state === "unexplored" && "text-foreground/45",
                     )}>
@@ -202,7 +196,7 @@ const SessionCompletionSummary = ({
             />
             {workspace.openQuestions.length > 0 ? (
               <div className="flex flex-col gap-3 border-l-2 border-orange-400 pl-4">
-                <p className="text-xs font-medium uppercase tracking-[0.14em] text-orange-700">Open questions</p>
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">Open questions</p>
                 <ul className="flex flex-col gap-2 text-sm leading-5 text-foreground/65">
                   {workspace.openQuestions.slice(0, 4).map((question) => (
                     <li key={question.id}>{question.text}</li>
@@ -216,7 +210,9 @@ const SessionCompletionSummary = ({
 
       <footer className="flex flex-col gap-3 border-t bg-background px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-9 lg:px-12">
         <p className="text-sm text-foreground/55">
-          Your completed concepts are now available in the dashboard practice lab.
+          {isCompleted
+            ? "Your completed concepts are now available in the dashboard practice lab."
+            : "Your saved progress is available in the dashboard practice lab."}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button onClick={onReview} type="button" variant="outline">

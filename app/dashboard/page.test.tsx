@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import DashboardPage, { generateMetadata } from "@/app/dashboard/page";
+import { internal } from "@/convex/_generated/api";
 import { AUTH_DEFAULT_REDIRECT, AUTH_REDIRECT_QUERY_PARAM } from "@/constants/auth";
 import { auth } from "@/lib/auth";
 import { queryConvexInternal } from "@/lib/convex-server";
@@ -16,8 +17,8 @@ jest.mock("next/navigation", () => ({
 jest.mock("@/lib/auth", () => ({ auth: { api: { getSession: jest.fn() } } }));
 jest.mock("@/lib/convex-server", () => ({ queryConvexInternal: jest.fn() }));
 jest.mock("@/components/dashboard/DashboardSidebar", () =>
-  function DashboardSidebarMock() {
-    return <aside>Dashboard navigation</aside>;
+  function DashboardSidebarMock({ user }: { user: { email: string; name: string } }) {
+    return <aside>{user.name} · {user.email}</aside>;
   },
 );
 jest.mock("@/components/common/PdfUploadBox", () =>
@@ -25,19 +26,15 @@ jest.mock("@/components/common/PdfUploadBox", () =>
     return <div>PDF upload</div>;
   },
 );
-jest.mock("@/components/dashboard/SavedSessions", () =>
-  function SavedSessionsMock() {
-    return <h2>Saved learning sessions</h2>;
-  },
-);
-jest.mock("@/components/dashboard/MasteryGraph", () =>
-  function MasteryGraphMock() {
-    return <h2>Mastery map</h2>;
-  },
-);
-jest.mock("@/components/dashboard/PracticeConcepts", () =>
-  function PracticeConceptsMock() {
-    return <h2>Practice concepts</h2>;
+jest.mock("@/components/dashboard/DashboardRealtime", () =>
+  function DashboardRealtimeMock() {
+    return (
+      <>
+        <h2>Mastery map</h2>
+        <h2>Practice concepts</h2>
+        <h2>Saved learning sessions</h2>
+      </>
+    );
   },
 );
 
@@ -46,7 +43,7 @@ const mockQueryConvexInternal = queryConvexInternal as jest.Mock;
 
 describe("Dashboard page", () => {
   it("generates a personalized dashboard title", async () => {
-    mockGetSession.mockResolvedValue({ user: { id: "user-id", name: "Ada" } });
+    mockGetSession.mockResolvedValue({ user: { email: "ada@example.com", id: "user-id", name: "Ada" } });
 
     await expect(generateMetadata()).resolves.toMatchObject({
       title: "Ada's Dashboard",
@@ -54,15 +51,35 @@ describe("Dashboard page", () => {
   });
 
   it("renders the signed-in user's dashboard", async () => {
-    mockGetSession.mockResolvedValue({ user: { id: "user-id", name: "Ada" } });
-    mockQueryConvexInternal.mockResolvedValue([]);
+    mockGetSession.mockResolvedValue({
+      user: { email: "ada@example.com", id: "user-id", name: "Ada" },
+    });
+    mockQueryConvexInternal.mockResolvedValue({
+      sessions: [],
+      practiceExcerpts: [],
+      masteryGraph: { nodes: [], edges: [] },
+    });
 
     render(await DashboardPage());
 
+    expect(mockQueryConvexInternal).toHaveBeenCalledWith(
+      internal.sessions.getDashboardForOwner,
+      { ownerId: "user-id" },
+    );
     expect(screen.getByRole("heading", { name: "Welcome back, Ada." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "What are you learning next?" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Mastery map" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Saved learning sessions" })).toBeInTheDocument();
+    expect(screen.getByText("Ada · ada@example.com")).toBeInTheDocument();
+  });
+
+  it("does not disguise a failed Convex read as an empty dashboard", async () => {
+    mockGetSession.mockResolvedValue({
+      user: { email: "ada@example.com", id: "user-id", name: "Ada" },
+    });
+    mockQueryConvexInternal.mockRejectedValue(new Error("Dashboard query unavailable"));
+
+    await expect(DashboardPage()).rejects.toThrow("Dashboard query unavailable");
   });
 
   it("redirects visitors who are not signed in", async () => {

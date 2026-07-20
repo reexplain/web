@@ -29,4 +29,14 @@ describe("AuthControls", () => {
     expect(authClient.signOut).toHaveBeenCalled();
     expect(refresh).toHaveBeenCalled();
   });
+
+  it("renders an accessible icon-only sign-out control", () => {
+    (useRouter as jest.Mock).mockReturnValue({ replace: jest.fn(), refresh: jest.fn() });
+
+    render(<AuthControls iconOnly isAuthenticated />);
+
+    const button = screen.getByRole("button", { name: "Sign out" });
+    expect(button).toHaveAttribute("title", "Sign out");
+    expect(button).toHaveClass("size-9");
+  });
 });

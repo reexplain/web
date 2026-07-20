@@ -1,17 +1,21 @@
 export type SessionWorkspaceProps = {
   filename?: string;
+  initialView?: "workspace" | "summary";
   pageCount?: number;
   learningSessionId: string;
 };
 
 export type SessionPageProps = {
-  searchParams: Promise<{ id?: string | string[] }>;
+  searchParams: Promise<{
+    id?: string | string[];
+    view?: string | string[];
+  }>;
 };
 
 export type SessionTurn = {
   id: number | string;
-  speaker: "AI" | "You";
-  label?: "EXPLAIN" | "PROBE" | "WHY" | "CONNECT" | "APPLY" | "CHALLENGE";
+  speaker: "AI learner" | "You";
+  label?: "LISTENING" | "CLARIFYING" | "FOLLOWING" | "CONNECTING" | "TRYING IT" | "STRESS TESTING" | "YOU";
   content: string;
   isOptimistic?: boolean;
 };
@@ -37,7 +41,7 @@ export type UnderstandingMirrorProps = {
 export type PersistedTurn = {
   id: string;
   role: "learner" | "assistant";
-  interactionType?: Lowercase<NonNullable<SessionTurn["label"]>>;
+  interactionType?: "explain" | "probe" | "why" | "connect" | "apply" | "challenge";
   content: string;
 };
 
@@ -59,6 +63,7 @@ export type WorkspaceEvidence = {
 
 export type WorkspaceResponse = {
   status: "active" | "completed" | "abandoned";
+  activeDurationMs?: number;
   startedAt: number;
   completedAt?: number;
   document: { filename: string; pageCount?: number };
@@ -69,4 +74,15 @@ export type WorkspaceResponse = {
   evidence: WorkspaceEvidence[];
   openQuestions: WorkspaceOpenQuestion[];
   summary?: string;
+};
+
+export type SessionCompletionSummaryProps = {
+  onReview: () => void;
+  workspace: WorkspaceResponse;
+};
+
+export type EvidenceListProps = {
+  emptyMessage: string;
+  evidence: WorkspaceEvidence[];
+  tone: "strength" | "revisit";
 };

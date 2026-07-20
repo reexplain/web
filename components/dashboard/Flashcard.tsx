@@ -1,22 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import type { PracticeExcerpt } from "@/types/dashboard";
+import type { FlashcardProps } from "@/types/dashboard";
 import { cn } from "@/utils/ui/cn";
+import { getPracticeQuestion } from "@/utils/practice/get-practice-question";
 
-const conceptPrompt = (excerpt: string) => {
-  const firstSentence = excerpt.match(/^.*?[.!?](?:\s|$)/)?.[0] ?? excerpt;
-  return firstSentence.trim().slice(0, 180);
-};
-
-const Flashcard = ({ item }: { item: PracticeExcerpt }) => {
+const Flashcard = ({ item }: FlashcardProps) => {
   const [isFlipped, setIsFlipped] = useState(false);
+  const { answer, question } = getPracticeQuestion(item.excerpt);
 
   return (
     <button
       aria-label={`Flashcard ${isFlipped ? "answer" : "question"}. Click to flip.`}
       aria-pressed={isFlipped}
-      className="group h-96 w-full text-left perspective-[1000px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-4"
+      className="group min-h-80 h-full w-full text-left perspective-[1000px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-4"
       onClick={() => setIsFlipped((current) => !current)}
       type="button"
     >
@@ -35,12 +32,12 @@ const Flashcard = ({ item }: { item: PracticeExcerpt }) => {
           </p>
           <div
             aria-label="Flashcard prompt"
-            className="flex min-h-0 flex-1 items-center overflow-y-auto py-4"
+            className="flex flex-1 items-center py-4"
             role="region"
             tabIndex={0}
           >
             <p className="font-secondary w-full text-2xl font-medium leading-tight">
-              Explain this idea in your own words: {conceptPrompt(item.excerpt)}
+              {question}
             </p>
           </div>
           <p className="text-sm text-foreground/60">Click to reveal the answer</p>
@@ -48,7 +45,7 @@ const Flashcard = ({ item }: { item: PracticeExcerpt }) => {
 
         <div
           aria-hidden={!isFlipped}
-          className="absolute inset-0 flex transform-[rotateY(180deg)] flex-col border border-emerald-500 bg-emerald-50 p-6 text-center shadow-sm backface-hidden"
+          className="absolute inset-0 flex transform-[rotateY(180deg)] flex-col border border-emerald-500 bg-emerald-50 p-6 text-center shadow-sm backface-hidden dark:bg-emerald-950/50"
           data-testid="flashcard-answer"
         >
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-600">
@@ -56,11 +53,11 @@ const Flashcard = ({ item }: { item: PracticeExcerpt }) => {
           </p>
           <div
             aria-label="Flashcard answer"
-            className="flex min-h-0 flex-1 items-center overflow-y-auto py-4"
+            className="flex flex-1 items-center py-4"
             role="region"
             tabIndex={0}
           >
-            <p className="w-full leading-relaxed text-foreground/75">{item.excerpt}</p>
+            <p className="w-full leading-relaxed text-foreground/75">{answer}</p>
           </div>
           <p className="text-sm text-foreground/60">Click to return to the prompt</p>
         </div>

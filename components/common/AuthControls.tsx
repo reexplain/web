@@ -7,14 +7,17 @@ import { Button } from "@/components/ui/button";
 import LoginDialog from "@/components/common/LoginDialog";
 import type { AuthControlsProps } from "@/types/auth";
 
-const AuthControls = ({ isAuthenticated }: AuthControlsProps) => {
+const AuthControls = ({ iconOnly = false, isAuthenticated }: AuthControlsProps) => {
     const router = useRouter();
 
     if (isAuthenticated) {
         return (
             <Button
+                aria-label={iconOnly ? "Sign out" : undefined}
                 variant="outline"
                 className="font-secondary uppercase"
+                size={iconOnly ? "icon" : "default"}
+                title={iconOnly ? "Sign out" : undefined}
                 onClick={async () => {
                     await authClient.signOut();
                     router.replace("/");
@@ -22,7 +25,7 @@ const AuthControls = ({ isAuthenticated }: AuthControlsProps) => {
                 }}
             >
                 <LogOut aria-hidden="true" data-icon="inline-start" />
-                Sign out
+                {iconOnly ? <span className="sr-only">Sign out</span> : "Sign out"}
             </Button>
         );
     }
