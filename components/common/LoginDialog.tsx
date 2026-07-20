@@ -46,7 +46,7 @@ const LoginDialog = ({ callbackURL, onOpenChange, open, trigger }: LoginDialogPr
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="gap-6 border-emerald-500 sm:max-w-md">
+      <DialogContent className="gap-6 sm:max-w-md">
         <DialogHeader className="gap-3 text-left">
           <DialogTitle className="font-secondary text-2xl font-medium">
             {LOGIN_DIALOG_TITLE}

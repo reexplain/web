@@ -29,4 +29,22 @@ describe("TopBar", () => {
 
     expect(screen.getByText("Anonymous")).toBeInTheDocument();
   });
+
+  it("shows the GitHub repository link only when requested by the landing page", async () => {
+    (auth.api.getSession as unknown as jest.Mock).mockResolvedValue(null);
+    render(await TopBar({ showGithub: true }));
+
+    expect(screen.getByRole("link", { name: "View ReExplain on GitHub" })).toHaveAttribute(
+      "href",
+      "https://www.github.com/reexplain",
+    );
+    expect(screen.getByRole("link", { name: "View ReExplain on GitHub" })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+    expect(screen.getByRole("link", { name: "View ReExplain on GitHub" })).toHaveAttribute(
+      "rel",
+      "noreferrer",
+    );
+  });
 });

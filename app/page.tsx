@@ -21,7 +21,7 @@ const Home = async () => {
 
   return (
     <>
-      <TopBar />
+      <TopBar showGithub />
       <main className="flex flex-1 flex-col justify-center py-14">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 sm:gap-10">
           <div className="flex flex-col gap-6">
@@ -41,7 +41,7 @@ const Home = async () => {
           <div className="flex flex-col gap-4">
             <PdfUploadBox isAuthenticated={false} />
             <div className="flex flex-wrap gap-2 text-xs text-foreground/50">
-              <span>Powered by OpenAI</span>
+              <span>Interactive sessions powered by GPT 5.6</span>
               {/* <span>Private by default</span> */}
               {/* <span>PDF · 20 MB max</span> */}
             </div>

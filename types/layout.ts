@@ -7,3 +7,7 @@ export type RootLayoutProps = Readonly<{
 export type ThemeProviderProps = Readonly<{
   children: ReactNode;
 }>;
+
+export type TopBarProps = {
+  showGithub?: boolean;
+};
