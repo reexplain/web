@@ -94,7 +94,7 @@ Codex accelerated implementation and verification; the key product choices remai
 - Convex for reactive learning data and mastery relationships
 - `@xyflow/react` for the mastery map
 - Jest and React Testing Library
-- FastAPI service in `../backend`
+- FastAPI service in [backend](https://github.com/reexplain/backend)
 
 ## Prerequisites
 
@@ -217,7 +217,7 @@ npx tsc --noEmit
 npm run build
 ```
 
-Run the backend checks from `../backend` as well:
+Run the backend checks from [backend](https://github.com/reexplain/backend) as well:
 
 ```bash
 uv run ruff check src tests
@@ -226,4 +226,6 @@ uv run pytest
 
 ## Deployment notes
 
-Deploy the web app with its environment variables configured, deploy Convex separately, and deploy the backend from `../backend` (the backend README includes Cloud Run instructions). Use the same public web origin for Better Auth trusted origins, the Convex `SITE_URL`, and the backend allowed origins.
+Deploy the web app with its environment variables configured, deploy Convex separately, and deploy the backend from [backend](https://github.com/reexplain/backend) (the backend README includes Cloud Run instructions). Use the same public web origin for Better Auth trusted origins, the Convex `SITE_URL`, and the backend allowed origins.
+
+Built for [OpenAI Build Week hackathon](https://openai.devpost.com/)
