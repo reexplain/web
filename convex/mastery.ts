@@ -2,12 +2,17 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { MAX_MASTERY_CONCEPTS } from "../constants/mastery";
+import {
+  MASTERY_EDGE_THRESHOLD,
+  MAX_MASTERY_CONCEPTS_PER_DOCUMENT,
+  MAX_MASTERY_EDGES_PER_NODE,
+  SAME_SESSION_EDGE_SIMILARITY,
+} from "../constants/mastery";
+import { createSessionEdgePairs } from "../utils/mastery/create-session-edge-pairs";
+import { selectCrossDocumentNeighbors } from "../utils/mastery/select-cross-document-neighbors";
 
 const EMBEDDING_DIMENSIONS = 1536;
 const MERGE_THRESHOLD = 0.88;
-const EDGE_THRESHOLD = 0.72;
-const MAX_EDGES_PER_NODE = 3;
 
 const masteryInput = v.object({
   name: v.string(),
@@ -31,11 +36,15 @@ const graphNode = v.object({
   evidenceCount: v.number(),
   sessionCount: v.number(),
   sourceCount: v.number(),
+  relatedSessions: v.array(v.object({
+    id: v.id("learningSessions"),
+    name: v.string(),
+  })),
   lastPracticedAt: v.number(),
 });
 
 const graphEdge = v.object({
-  id: v.id("masteryEdges"),
+  id: v.string(),
   sourceConceptId: v.id("masteryConcepts"),
   targetConceptId: v.id("masteryConcepts"),
   relationship: v.literal("related"),
@@ -92,16 +101,82 @@ export const getGraphForOwner = async (ctx: QueryCtx, ownerId: string) => {
       .query("masteryConcepts")
       .withIndex("by_ownerId_and_updatedAt", (query) => query.eq("ownerId", ownerId))
       .order("desc")
-      .take(MAX_MASTERY_CONCEPTS),
+      .collect(),
     ctx.db
       .query("masteryEdges")
       .withIndex("by_ownerId", (query) => query.eq("ownerId", ownerId))
-      .take(300),
+      .collect(),
   ]);
   const nodeIds = new Set(nodes.map((node) => node._id));
+  const contributionsByNode = await Promise.all(
+    nodes.map((node) =>
+      ctx.db
+        .query("masteryContributions")
+        .withIndex("by_masteryConceptId", (query) => query.eq("masteryConceptId", node._id))
+        .collect(),
+    ),
+  );
+  const sourceDocumentIds = new Set(
+    contributionsByNode.flatMap((contributions) =>
+      contributions.map((contribution) => contribution.sourceDocumentId),
+    ),
+  );
+  const sourceDocuments = await Promise.all(
+    Array.from(sourceDocumentIds, (documentId) => ctx.db.get("documents", documentId)),
+  );
+  const sourceDocumentNames = new Map(
+    sourceDocuments.flatMap((document) =>
+      document && document.ownerId === ownerId
+        ? [[document._id, document.filename] as const]
+        : [],
+    ),
+  );
+  const conceptIdsBySession = new Map<string, Id<"masteryConcepts">[]>();
+
+  contributionsByNode.forEach((contributions, index) => {
+    const conceptId = nodes[index]._id;
+    for (const contribution of contributions) {
+      const conceptIds = conceptIdsBySession.get(contribution.sessionId) ?? [];
+      if (!conceptIds.includes(conceptId)) conceptIds.push(conceptId);
+      conceptIdsBySession.set(contribution.sessionId, conceptIds);
+    }
+  });
+  const graphEdges = edges
+    .filter(
+      (edge) => nodeIds.has(edge.sourceConceptId) && nodeIds.has(edge.targetConceptId),
+    )
+    .map((edge) => ({
+      id: edge._id,
+      sourceConceptId: edge.sourceConceptId,
+      targetConceptId: edge.targetConceptId,
+      relationship: edge.relationship,
+      similarity: edge.similarity,
+      strength: edge.strength,
+    }));
+  const connectedPairs = new Set(
+    graphEdges.map((edge) => [edge.sourceConceptId, edge.targetConceptId].sort().join(":")),
+  );
+  const sameSessionEdges = Array.from(conceptIdsBySession.entries()).flatMap(
+    ([sessionId, conceptIds]) =>
+      createSessionEdgePairs(conceptIds)
+        .filter((pair) => {
+          const pairKey = [pair.sourceConceptId, pair.targetConceptId].sort().join(":");
+          if (connectedPairs.has(pairKey)) return false;
+          connectedPairs.add(pairKey);
+          return true;
+        })
+        .map((pair) => ({
+          id: `session:${sessionId}:${pair.sourceConceptId}:${pair.targetConceptId}`,
+          sourceConceptId: pair.sourceConceptId,
+          targetConceptId: pair.targetConceptId,
+          relationship: "related" as const,
+          similarity: SAME_SESSION_EDGE_SIMILARITY,
+          strength: Math.round(SAME_SESSION_EDGE_SIMILARITY * 100),
+        })),
+  );
 
   return {
-    nodes: nodes.map((node) => ({
+    nodes: nodes.map((node, index) => ({
       id: node._id,
       name: node.name,
       description: node.description,
@@ -110,20 +185,13 @@ export const getGraphForOwner = async (ctx: QueryCtx, ownerId: string) => {
       evidenceCount: node.evidenceCount,
       sessionCount: node.sessionCount,
       sourceCount: node.sourceDocumentIds.length,
+      relatedSessions: contributionsByNode[index].flatMap((contribution) => {
+        const sessionName = sourceDocumentNames.get(contribution.sourceDocumentId);
+        return sessionName ? [{ id: contribution.sessionId, name: sessionName }] : [];
+      }),
       lastPracticedAt: node.lastPracticedAt,
     })),
-    edges: edges
-      .filter(
-        (edge) => nodeIds.has(edge.sourceConceptId) && nodeIds.has(edge.targetConceptId),
-      )
-      .map((edge) => ({
-        id: edge._id,
-        sourceConceptId: edge.sourceConceptId,
-        targetConceptId: edge.targetConceptId,
-        relationship: edge.relationship,
-        similarity: edge.similarity,
-        strength: edge.strength,
-      })),
+    edges: [...graphEdges, ...sameSessionEdges],
   };
 };
 
@@ -143,6 +211,61 @@ export const getCurrentUser = query({
   },
 });
 
+export const rebuildSimilarityEdgesForOwner = internalMutation({
+  args: { ownerId: v.string() },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const [nodes, existingEdges] = await Promise.all([
+      ctx.db
+        .query("masteryConcepts")
+        .withIndex("by_ownerId_and_updatedAt", (query) => query.eq("ownerId", args.ownerId))
+        .collect(),
+      ctx.db
+        .query("masteryEdges")
+        .withIndex("by_ownerId", (query) => query.eq("ownerId", args.ownerId))
+        .collect(),
+    ]);
+    await Promise.all(existingEdges.map((edge) => ctx.db.delete("masteryEdges", edge._id)));
+
+    const connectedPairs = new Set<string>();
+    const now = Date.now();
+    let edgeCount = 0;
+
+    for (const source of nodes) {
+      const candidates = nodes
+        .filter((node) => node._id !== source._id)
+        .map((node) => ({
+          node,
+          similarity: cosineSimilarity(source.embedding, node.embedding),
+        }));
+      const neighbors = selectCrossDocumentNeighbors(
+        source.sourceDocumentIds,
+        candidates,
+        MASTERY_EDGE_THRESHOLD,
+        MAX_MASTERY_EDGES_PER_NODE,
+      );
+
+      for (const neighbor of neighbors) {
+        const pairKey = [source._id, neighbor.node._id].sort().join(":");
+        if (connectedPairs.has(pairKey)) continue;
+        connectedPairs.add(pairKey);
+        await ctx.db.insert("masteryEdges", {
+          ownerId: args.ownerId,
+          sourceConceptId: source._id,
+          targetConceptId: neighbor.node._id,
+          relationship: "related",
+          similarity: neighbor.similarity,
+          strength: Math.round(neighbor.similarity * 100),
+          updatedAt: now,
+        });
+        edgeCount += 1;
+      }
+    }
+
+    return edgeCount;
+  },
+});
+
 export const applyCompletedSession = internalMutation({
   args: {
     ownerId: v.string(),
@@ -158,7 +281,10 @@ export const applyCompletedSession = internalMutation({
     if (!session || session.ownerId !== args.ownerId || session.documentId !== args.documentId) {
       throw new Error("Session not found.");
     }
-    const mainConcepts = args.concepts.slice(0, MAX_MASTERY_CONCEPTS);
+    const mainConcepts = args.concepts.slice(
+      0,
+      MAX_MASTERY_CONCEPTS_PER_DOCUMENT,
+    );
     if (mainConcepts.some((concept) => concept.embedding.length !== EMBEDDING_DIMENSIONS)) {
       throw new Error("Concept embedding dimensions are invalid.");
     }
@@ -203,7 +329,7 @@ export const applyCompletedSession = internalMutation({
     const nodes = await ctx.db
       .query("masteryConcepts")
       .withIndex("by_ownerId_and_updatedAt", (query) => query.eq("ownerId", args.ownerId))
-      .take(200);
+      .collect();
     const touchedIds = new Set<Id<"masteryConcepts">>();
 
     for (const concept of consolidatedConcepts) {
@@ -299,12 +425,18 @@ export const applyCompletedSession = internalMutation({
         .collect();
       await Promise.all(oldEdges.map((edge) => ctx.db.delete("masteryEdges", edge._id)));
 
-      const neighbors = nodes
+      const candidates = nodes
         .filter((node) => node._id !== sourceConceptId)
-        .map((node) => ({ node, similarity: cosineSimilarity(source.embedding, node.embedding) }))
-        .filter((candidate) => candidate.similarity >= EDGE_THRESHOLD)
-        .sort((left, right) => right.similarity - left.similarity)
-        .slice(0, MAX_EDGES_PER_NODE);
+        .map((node) => ({
+          node,
+          similarity: cosineSimilarity(source.embedding, node.embedding),
+        }));
+      const neighbors = selectCrossDocumentNeighbors(
+        source.sourceDocumentIds,
+        candidates,
+        MASTERY_EDGE_THRESHOLD,
+        MAX_MASTERY_EDGES_PER_NODE,
+      );
       for (const neighbor of neighbors) {
         await ctx.db.insert("masteryEdges", {
           ownerId: args.ownerId,
@@ -316,6 +448,28 @@ export const applyCompletedSession = internalMutation({
           updatedAt: now,
         });
       }
+    }
+
+    for (const pair of createSessionEdgePairs(touchedIds)) {
+      const existingEdge = await ctx.db
+        .query("masteryEdges")
+        .withIndex("by_sourceConceptId_and_targetConceptId", (query) =>
+          query
+            .eq("sourceConceptId", pair.sourceConceptId)
+            .eq("targetConceptId", pair.targetConceptId),
+        )
+        .first();
+      if (existingEdge) continue;
+
+      await ctx.db.insert("masteryEdges", {
+        ownerId: args.ownerId,
+        sourceConceptId: pair.sourceConceptId,
+        targetConceptId: pair.targetConceptId,
+        relationship: "related",
+        similarity: SAME_SESSION_EDGE_SIMILARITY,
+        strength: Math.round(SAME_SESSION_EDGE_SIMILARITY * 100),
+        updatedAt: now,
+      });
     }
 
     await ctx.db.patch("learningSessions", args.sessionId, {

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import {
   getGraphForOwner,
   masteryGraph,
@@ -62,6 +63,14 @@ const practiceExcerpt = v.object({
   sequence: v.number(),
 });
 
+const practiceBatch = v.object({
+  id: v.id("learningSessions"),
+  documentId: v.id("documents"),
+  filename: v.string(),
+  generatedAt: v.number(),
+  excerpts: v.array(practiceExcerpt),
+});
+
 const savedSession = v.object({
   id: v.id("learningSessions"),
   documentId: v.id("documents"),
@@ -106,6 +115,59 @@ const getLatestConceptSet = <Concept extends { sequence: number; updatedAt: numb
   .sort((left, right) => right.updatedAt - left.updatedAt)
   .slice(0, totalConceptCount)
   .sort((left, right) => left.sequence - right.sequence);
+
+const getPracticeBatch = async (
+  ctx: QueryCtx,
+  ownerId: string,
+  session: Doc<"learningSessions">,
+) => {
+  if (!session.masteryProcessedAt) return null;
+  const [document, concepts] = await Promise.all([
+    ctx.db.get("documents", session.documentId),
+    ctx.db
+      .query("concepts")
+      .withIndex("by_sessionId_and_sequence", (query) =>
+        query.eq("sessionId", session._id),
+      )
+      .order("asc")
+      .take(50),
+  ]);
+  if (!document || document.ownerId !== ownerId) return null;
+
+  const latestConcepts = getLatestConceptSet(concepts, session.totalConceptCount);
+  const seenConcepts = new Set<string>();
+  const excerpts = latestConcepts.flatMap((concept) => {
+    const name = concept.name.trim();
+    const description = concept.description?.trim();
+    const content = description ? `${name}: ${description}` : name;
+    const key = normalizeConceptName(name);
+
+    if (
+      !name ||
+      !description ||
+      seenConcepts.has(key) ||
+      DOCUMENT_STRUCTURE_CONCEPT_PATTERN.test(content)
+    ) {
+      return [];
+    }
+
+    seenConcepts.add(key);
+    return [{
+      id: String(concept._id),
+      excerpt: content,
+      sequence: concept.sequence,
+    }];
+  }).slice(0, PRACTICE_CONCEPT_LIMIT);
+
+  if (excerpts.length === 0) return null;
+  return {
+    id: session._id,
+    documentId: document._id,
+    filename: document.filename,
+    generatedAt: session.masteryProcessedAt,
+    excerpts,
+  };
+};
 
 const getSessionsForOwner = async (ctx: QueryCtx, ownerId: string) => {
   const sessions = await ctx.db
@@ -200,45 +262,31 @@ const getPracticeForUser = async (ctx: QueryCtx, ownerId: string) => {
     .take(12);
   const seenDocumentIds = new Set<string>();
   for (const session of sessions) {
-    if (!session.masteryProcessedAt) continue;
     if (seenDocumentIds.has(session.documentId)) continue;
-    const document = await ctx.db.get("documents", session.documentId);
-    if (!document || document.ownerId !== ownerId) continue;
-    seenDocumentIds.add(document._id);
-
-    const concepts = await ctx.db
-      .query("concepts")
-      .withIndex("by_sessionId_and_sequence", (query) => query.eq("sessionId", session._id))
-      .order("asc")
-      .take(50);
-    const latestConcepts = getLatestConceptSet(concepts, session.totalConceptCount);
-    const seenConcepts = new Set<string>();
-    const excerpts = latestConcepts.flatMap((concept) => {
-      const name = concept.name.trim();
-      const description = concept.description?.trim();
-      const content = description ? `${name}: ${description}` : name;
-      const key = normalizeConceptName(name);
-
-      if (
-        !name ||
-        !description ||
-        seenConcepts.has(key) ||
-        DOCUMENT_STRUCTURE_CONCEPT_PATTERN.test(content)
-      ) {
-        return [];
-      }
-
-      seenConcepts.add(key);
-      return [{
-        id: String(concept._id),
-        excerpt: content,
-        sequence: concept.sequence,
-      }];
-    }).slice(0, PRACTICE_CONCEPT_LIMIT);
-    if (excerpts.length > 0) return excerpts;
+    const batch = await getPracticeBatch(ctx, ownerId, session);
+    if (!batch) continue;
+    seenDocumentIds.add(batch.documentId);
+    return batch.excerpts;
   }
 
   return [];
+};
+
+const getPracticeHistoryForUser = async (ctx: QueryCtx, ownerId: string) => {
+  const sessions = await ctx.db
+    .query("learningSessions")
+    .withIndex("by_ownerId_and_updatedAt", (query) => query.eq("ownerId", ownerId))
+    .collect();
+  const generatedSessions = sessions
+    .filter((session) => session.masteryProcessedAt !== undefined)
+    .sort(
+      (left, right) =>
+        (right.masteryProcessedAt ?? 0) - (left.masteryProcessedAt ?? 0),
+    );
+  const batches = await Promise.all(
+    generatedSessions.map((session) => getPracticeBatch(ctx, ownerId, session)),
+  );
+  return batches.flatMap((batch) => batch ? [batch] : []);
 };
 
 export const getPracticeForOwner = internalQuery({
@@ -257,6 +305,12 @@ export const getPracticeCurrentUser = query({
     if (!identity) throw new Error("Authentication required.");
     return getPracticeForUser(ctx, identity.subject);
   },
+});
+
+export const getPracticeHistoryForOwner = internalQuery({
+  args: { ownerId: v.string() },
+  returns: v.array(practiceBatch),
+  handler: async (ctx, args) => getPracticeHistoryForUser(ctx, args.ownerId),
 });
 
 const dashboardSnapshot = v.object({

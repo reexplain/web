@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { QuizProps } from "@/types/dashboard";
 import { getPracticeQuestion } from "@/utils/practice/get-practice-question";
+import { cn } from "@/utils/ui/cn";
 
 const hashOptionIds = (ids: string[]) => {
   let hash = 2_166_136_261;
@@ -36,19 +37,16 @@ const shuffleOptions = (items: QuizProps["items"], correctId: string) => {
   return options;
 };
 
-const Quiz = ({ items }: QuizProps) => {
+const Quiz = ({ correctItemId, items }: QuizProps) => {
   const [selectedAnswer, setSelectedAnswer] = useState<string>();
-  const orderedItems = [...items].sort((left, right) => left.sequence - right.sequence);
-  const correctItem = orderedItems[0];
+  const correctItem = items.find((item) => item.id === correctItemId) ?? items[0];
   const correctQuestion = getPracticeQuestion(correctItem.excerpt);
   const options = shuffleOptions(items, correctItem.id);
 
-  const hasAnswered = selectedAnswer !== undefined;
-  const isCorrect = selectedAnswer === correctItem.id;
   const prompt = correctQuestion.question;
 
   return (
-    <Card className="grid h-full min-h-80 grid-rows-[auto_1fr_auto] gap-4">
+    <Card className="grid h-full min-h-80 grid-rows-[auto_1fr] gap-4">
       <CardHeader className="gap-2">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-500">
           Quick quiz
@@ -65,7 +63,13 @@ const Quiz = ({ items }: QuizProps) => {
           {options.map((item) => (
             <Button
               aria-checked={selectedAnswer === item.id}
-              className="h-auto min-h-9 whitespace-normal py-2"
+              className={cn(
+                "h-auto min-h-9 whitespace-normal py-2 hover:border-border hover:bg-background dark:hover:border-input dark:hover:bg-input/30",
+                selectedAnswer === item.id && item.id === correctItem.id &&
+                  "border-emerald-500 bg-emerald-500 text-white hover:border-emerald-500 hover:bg-emerald-500 dark:border-emerald-600 dark:bg-emerald-600 dark:hover:border-emerald-600 dark:hover:bg-emerald-600",
+                selectedAnswer === item.id && item.id !== correctItem.id &&
+                  "border-destructive bg-destructive text-white hover:border-destructive hover:bg-destructive dark:border-destructive/90 dark:bg-destructive/90 dark:hover:border-destructive/90 dark:hover:bg-destructive/90",
+              )}
               key={item.id}
               onClick={() => setSelectedAnswer(item.id)}
               role="radio"
@@ -76,13 +80,6 @@ const Quiz = ({ items }: QuizProps) => {
           ))}
         </div>
       </CardContent>
-      <CardFooter className="min-h-10 flex-col items-start gap-2">
-        {hasAnswered ? (
-          <p className={isCorrect ? "text-emerald-600" : "text-destructive"} role="status">
-            {isCorrect ? "Correct." : "Not quite. Try another answer."}
-          </p>
-        ) : null}
-      </CardFooter>
     </Card>
   );
 };

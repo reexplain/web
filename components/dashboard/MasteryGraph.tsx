@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dagre from "@dagrejs/dagre";
 import {
   Background,
   BackgroundVariant,
@@ -13,12 +14,27 @@ import {
 import { Network, Workflow } from "lucide-react";
 import DashboardEmptyState from "@/components/dashboard/DashboardEmptyState";
 import type {
-  GraphLayoutPosition,
   MasteryGraphData,
   MasteryGraphProps,
   MasteryNode,
 } from "@/types/dashboard";
 import { cn } from "@/utils/ui/cn";
+
+const GRAPH_NODE_WIDTH = 164;
+const GRAPH_NODE_MIN_HEIGHT = 58;
+const GRAPH_NODE_Z_INDEX = 60;
+const GRAPH_NODE_CONTENT_WIDTH = 20;
+const GRAPH_NODE_LINE_HEIGHT = 18;
+const GRAPH_NODE_VERTICAL_CHROME = 24;
+
+const getGraphNodeHeight = (node: MasteryNode) => {
+  const label = `${node.name} · ${node.confidenceScore}%`;
+  const lineCount = Math.max(1, Math.ceil(label.length / GRAPH_NODE_CONTENT_WIDTH));
+  return Math.max(
+    GRAPH_NODE_MIN_HEIGHT,
+    lineCount * GRAPH_NODE_LINE_HEIGHT + GRAPH_NODE_VERTICAL_CHROME,
+  );
+};
 
 const stateStyles = {
   unexplored: {
@@ -54,65 +70,38 @@ const buildConnectionAlignedPositions = (
   nodes: MasteryNode[],
   edges: MasteryGraphData["edges"],
 ) => {
-  const positions = new Map<string, GraphLayoutPosition>();
-  const sortedNodes = [...nodes].sort((left, right) => left.name.localeCompare(right.name));
-  const columnCount = Math.ceil(Math.sqrt(nodes.length));
-
-  sortedNodes.forEach((node, index) => {
-    positions.set(node.id, {
-      x: 72 + (index % columnCount) * 240,
-      y: 72 + Math.floor(index / columnCount) * 150,
-      velocityX: 0,
-      velocityY: 0,
-    });
+  const layout = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+  layout.setGraph({
+    acyclicer: "greedy",
+    edgesep: 20,
+    marginx: 24,
+    marginy: 24,
+    nodesep: 36,
+    rankdir: "TB",
+    ranker: "network-simplex",
+    ranksep: 56,
   });
 
-  for (let iteration = 0; iteration < 140; iteration += 1) {
-    for (let leftIndex = 0; leftIndex < sortedNodes.length; leftIndex += 1) {
-      for (let rightIndex = leftIndex + 1; rightIndex < sortedNodes.length; rightIndex += 1) {
-        const left = positions.get(sortedNodes[leftIndex].id)!;
-        const right = positions.get(sortedNodes[rightIndex].id)!;
-        const deltaX = right.x - left.x;
-        const deltaY = right.y - left.y;
-        const distance = Math.max(1, Math.hypot(deltaX, deltaY));
-        const force = 1_800 / (distance * distance);
-        const forceX = (deltaX / distance) * force;
-        const forceY = (deltaY / distance) * force;
-
-        left.velocityX -= forceX;
-        left.velocityY -= forceY;
-        right.velocityX += forceX;
-        right.velocityY += forceY;
-      }
-    }
-
-    for (const edge of edges) {
-      const source = positions.get(edge.sourceConceptId);
-      const target = positions.get(edge.targetConceptId);
-      if (!source || !target) continue;
-
-      const deltaX = target.x - source.x;
-      const deltaY = target.y - source.y;
-      const distance = Math.max(1, Math.hypot(deltaX, deltaY));
-      const force = (distance - 230) * 0.018;
-      const forceX = (deltaX / distance) * force;
-      const forceY = (deltaY / distance) * force;
-
-      source.velocityX += forceX;
-      source.velocityY += forceY;
-      target.velocityX -= forceX;
-      target.velocityY -= forceY;
-    }
-
-    positions.forEach((position) => {
-      position.velocityX *= 0.72;
-      position.velocityY *= 0.72;
-      position.x += position.velocityX;
-      position.y += position.velocityY;
+  for (const node of nodes) {
+    layout.setNode(node.id, {
+      width: GRAPH_NODE_WIDTH,
+      height: getGraphNodeHeight(node),
     });
   }
+  for (const edge of edges) {
+    layout.setEdge(edge.sourceConceptId, edge.targetConceptId);
+  }
+  dagre.layout(layout);
 
-  return positions;
+  return new Map(
+    nodes.map((node) => {
+      const position = layout.node(node.id);
+      return [node.id, {
+        x: position.x - GRAPH_NODE_WIDTH / 2,
+        y: position.y - getGraphNodeHeight(node) / 2,
+      }];
+    }),
+  );
 };
 
 const buildFlowNodes = (
@@ -142,8 +131,7 @@ const buildFlowNodes = (
           },
       data: { label: `${node.name} · ${node.confidenceScore}%` },
       style: {
-        width: 164,
-        minHeight: 58,
+        alignItems: "center",
         padding: 10,
         border: `2px solid ${palette.border}`,
         background: palette.background,
@@ -152,32 +140,69 @@ const buildFlowNodes = (
         fontFamily: "Satoshi, sans-serif",
         fontSize: 13,
         fontWeight: 600,
+        height: "fit-content",
+        justifyContent: "center",
+        minHeight: GRAPH_NODE_MIN_HEIGHT,
         boxShadow: node.masteryState === "mastered" ? "4px 4px 0 var(--graph-mastered-shadow)" : "none",
+        textAlign: "center",
+        width: GRAPH_NODE_WIDTH,
       },
+      zIndex: GRAPH_NODE_Z_INDEX,
     };
   });
 };
 
-const buildFlowEdges = (edges: MasteryGraphData["edges"]): Edge[] =>
-  edges.map((edge) => ({
+const buildFlowEdges = (
+  edges: MasteryGraphData["edges"],
+  hoveredNodeId?: string,
+): Edge[] => edges.map((edge) => {
+  const isRelatedToHoveredNode = hoveredNodeId === edge.sourceConceptId ||
+    hoveredNodeId === edge.targetConceptId;
+
+  return {
+    className: isRelatedToHoveredNode ? "mastery-edge-active" : undefined,
     id: edge.id,
     source: edge.sourceConceptId,
     target: edge.targetConceptId,
     style: {
-      stroke: "var(--graph-edge)",
-      strokeWidth: 1 + edge.similarity * 2,
-      opacity: 0.35 + edge.similarity * 0.45,
+      stroke: isRelatedToHoveredNode
+        ? "#10b981"
+        : "var(--graph-edge)",
+      strokeWidth: isRelatedToHoveredNode ? 4 : 1 + edge.similarity * 2,
+      opacity: hoveredNodeId
+        ? isRelatedToHoveredNode ? 1 : 0.08
+        : 0.35 + edge.similarity * 0.45,
     },
+    zIndex: isRelatedToHoveredNode ? 1 : 0,
+  };
+});
+
+const buildFallbackEdges = (nodes: MasteryNode[]): MasteryGraphData["edges"] =>
+  nodes.slice(1).map((node) => ({
+    id: `fallback:${node.id}`,
+    sourceConceptId: node.id,
+    targetConceptId: nodes[0].id,
+    relationship: "related",
+    similarity: 0.6,
+    strength: 60,
   }));
 
 const MasteryGraph = ({ graph }: MasteryGraphProps) => {
   const [isConnectionAligned, setIsConnectionAligned] = useState(false);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
-  const flowNodes = useMemo(
-    () => buildFlowNodes(graph.nodes, graph.edges, isConnectionAligned),
-    [graph.edges, graph.nodes, isConnectionAligned],
+  const visibleEdges = useMemo(
+    () => graph.edges.length > 0 ? graph.edges : buildFallbackEdges(graph.nodes),
+    [graph.edges, graph.nodes],
   );
-  const flowEdges = useMemo(() => buildFlowEdges(graph.edges), [graph.edges]);
+  const flowNodes = useMemo(
+    () => buildFlowNodes(graph.nodes, visibleEdges, isConnectionAligned),
+    [graph.nodes, isConnectionAligned, visibleEdges],
+  );
+  const flowEdges = useMemo(
+    () => buildFlowEdges(visibleEdges, hoveredNodeId),
+    [hoveredNodeId, visibleEdges],
+  );
   const selectedNode =
     graph.nodes.find((node) => node.id === selectedId) ?? graph.nodes[0];
 
@@ -203,11 +228,14 @@ const MasteryGraph = ({ graph }: MasteryGraphProps) => {
                 key={isConnectionAligned ? "connection-aligned" : "radial"}
                 edges={flowEdges}
                 fitView
-                fitViewOptions={{ padding: 0.2 }}
+                fitViewOptions={{ maxZoom: 1.15, minZoom: 0.01, padding: 0.08 }}
+                minZoom={0.01}
                 nodes={flowNodes}
                 nodesConnectable={false}
                 nodesDraggable={false}
                 onNodeClick={(_, node) => setSelectedId(node.id)}
+                onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
+                onNodeMouseLeave={() => setHoveredNodeId(undefined)}
                 proOptions={{ hideAttribution: true }}
               >
                 <Background color="var(--graph-grid)" gap={24} size={1} variant={BackgroundVariant.Dots} />
@@ -247,6 +275,18 @@ const MasteryGraph = ({ graph }: MasteryGraphProps) => {
                     <div><dt className="text-foreground/50">Sessions</dt><dd className="font-medium">{selectedNode.sessionCount}</dd></div>
                     <div><dt className="text-foreground/50">Sources</dt><dd className="font-medium">{selectedNode.sourceCount}</dd></div>
                   </dl>
+                  <div className="flex flex-col gap-2 border-t pt-4">
+                    <h4 className="text-xs font-medium uppercase tracking-[0.18em] text-foreground/50">
+                      Related sessions
+                    </h4>
+                    <ul className="flex flex-col gap-2">
+                      {selectedNode.relatedSessions.map((session) => (
+                        <li className="wrap-break-word text-sm font-medium" key={session.id}>
+                          {session.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </>
               ) : null}
             </aside>

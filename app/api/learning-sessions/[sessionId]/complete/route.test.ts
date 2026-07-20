@@ -147,7 +147,7 @@ describe("POST /api/learning-sessions/:sessionId/complete", () => {
     });
   });
 
-  it("contributes only the five primary concepts to the mastery graph", async () => {
+  it("contributes only the five primary document concepts to the mastery graph", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "better-auth-user-id" } });
     mockMutateConvexInternal.mockResolvedValue(null);
     mockCallReExplainApi.mockResolvedValue({

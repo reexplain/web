@@ -19,7 +19,7 @@ const TopBar = async () => {
             </Link>
             <div className="flex items-center gap-2">
                 <ThemeToggle />
-                <AuthControls isAuthenticated={Boolean(session)} />
+                {!session ? <AuthControls isAuthenticated={false} /> : null}
             </div>
         </div>
     )

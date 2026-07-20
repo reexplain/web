@@ -1,14 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import PracticeConcepts from "@/components/dashboard/PracticeConcepts";
 
-jest.mock("@/components/dashboard/Flashcard", () =>
-  function FlashcardMock({ item }: { item: { id: string; excerpt: string } }) {
-    return <div>Flashcard: {item.id} {item.excerpt}</div>;
-  },
-);
-jest.mock("@/components/dashboard/Quiz", () =>
-  function QuizMock({ items }: { items: Array<{ id: string }> }) {
-    return <div>Quiz: {items.map((item) => item.id).join(",")}</div>;
+jest.mock("@/components/dashboard/PracticeActivityPair", () =>
+  function PracticeActivityPairMock({ excerpts }: { excerpts: Array<{ id: string }> }) {
+    return <div>Practice pair: {excerpts.map((item) => item.id).join(",")}</div>;
   },
 );
 
@@ -28,16 +23,21 @@ describe("PracticeConcepts", () => {
 
     expect(screen.getByRole("heading", { name: "Practice concepts" }).closest("section"))
       .toHaveClass("scroll-mt-40", "lg:scroll-mt-8");
-    expect(screen.getByText("Flashcard: chunk-1:0 Initial concept")).toBeInTheDocument();
-    expect(screen.getByText("Quiz: chunk-2:0,chunk-3:0,chunk-4:0,chunk-5:0")).toBeInTheDocument();
+    expect(screen.getByText(
+      "Practice pair: chunk-1:0,chunk-2:0,chunk-3:0,chunk-4:0,chunk-5:0,chunk-6:0,chunk-7:0",
+    )).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Show all" })).toHaveAttribute(
+      "href",
+      "/practice",
+    );
     expect(screen.queryByText(/reorder/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Practice activities")).toHaveClass("lg:grid-cols-2", "auto-rows-fr");
   });
 
   it("shows the empty state when the realtime snapshot has no practice", () => {
     render(<PracticeConcepts excerpts={[]} />);
 
-    expect(screen.queryByText("Flashcard: chunk-1:0 Initial concept")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Practice pair:/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Show all" })).not.toBeInTheDocument();
     expect(
       screen.getByText("Discuss a concept to unlock practice"),
     ).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe("PracticeConcepts", () => {
       />,
     );
 
-    expect(screen.getByText("Flashcard: chunk-4:0 Replacement concept")).toBeInTheDocument();
-    expect(screen.queryByText("Flashcard: chunk-1:0 Initial concept")).not.toBeInTheDocument();
+    expect(screen.getByText("Practice pair: chunk-4:0")).toBeInTheDocument();
+    expect(screen.queryByText(/chunk-1:0/)).not.toBeInTheDocument();
   });
 });

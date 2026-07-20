@@ -10,6 +10,14 @@ jest.mock("@/components/common/LoginDialog", () => function LoginDialogMock() {
 });
 
 describe("PdfUploadBox", () => {
+  it("explains which learning materials can be uploaded", () => {
+    render(<PdfUploadBox isAuthenticated />);
+
+    expect(screen.getByText(/textbook chapter, research paper, or study notes/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose learning material" })).toBeInTheDocument();
+    expect(screen.getByText("PDF format • Up to 20 MB • 25 pages max")).toBeInTheDocument();
+  });
+
   it("shows a validation error for a non-PDF file", () => {
     const { container } = render(<PdfUploadBox isAuthenticated />);
     const input = container.querySelector("input[type=file]");

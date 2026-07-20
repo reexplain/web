@@ -4,7 +4,7 @@ import { internal } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { auth } from "@/lib/auth";
 import { mutateConvexInternal, queryConvexInternal } from "@/lib/convex-server";
-import { MAX_MASTERY_CONCEPTS } from "@/constants/mastery";
+import { MAX_MASTERY_CONCEPTS_PER_DOCUMENT } from "@/constants/mastery";
 import { MAX_SESSION_ACTIVE_DURATION_MS } from "@/constants/session-input";
 import {
   callReExplainApi,
@@ -57,7 +57,10 @@ export async function POST(request: Request, context: RouteContext) {
       const key = item.conceptName.trim().toLocaleLowerCase();
       evidenceCounts.set(key, (evidenceCounts.get(key) ?? 0) + 1);
     }
-    const mainConcepts = workspace.concepts.slice(0, MAX_MASTERY_CONCEPTS);
+    const mainConcepts = workspace.concepts.slice(
+      0,
+      MAX_MASTERY_CONCEPTS_PER_DOCUMENT,
+    );
     const embeddingResult = mainConcepts.length > 0
       ? await callReExplainApi(
           "/api/v1/learning/embeddings",

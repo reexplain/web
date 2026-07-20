@@ -1,6 +1,6 @@
 import type { FunctionReturnType } from "convex/server";
 import type { LucideIcon } from "lucide-react";
-import { api } from "@/convex/_generated/api";
+import { api, internal } from "@/convex/_generated/api";
 
 export type PracticeExcerpt = {
   id: string;
@@ -18,6 +18,7 @@ export type FlashcardProps = {
 };
 
 export type QuizProps = {
+  correctItemId: string;
   items: PracticeExcerpt[];
 };
 
@@ -52,12 +53,6 @@ export type DeleteSessionButtonProps = {
 
 export type MasteryGraphData = FunctionReturnType<typeof api.mastery.getCurrentUser>;
 export type MasteryNode = MasteryGraphData["nodes"][number];
-export type GraphLayoutPosition = {
-  velocityX: number;
-  velocityY: number;
-  x: number;
-  y: number;
-};
 export type MasteryGraphProps = {
   graph: MasteryGraphData;
 };
@@ -67,6 +62,15 @@ export type PracticeExcerpts = FunctionReturnType<
 >;
 export type PracticeConceptsProps = {
   excerpts: PracticeExcerpts;
+};
+export type PracticeActivityPairProps = {
+  excerpts: PracticeExcerpt[];
+};
+export type PracticeBatch = FunctionReturnType<
+  typeof internal.sessions.getPracticeHistoryForOwner
+>[number];
+export type PracticeHistoryProps = {
+  batches: PracticeBatch[];
 };
 
 export type SavedSession = FunctionReturnType<

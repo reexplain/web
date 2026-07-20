@@ -16,7 +16,14 @@ import {
 import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { stagePdf } from "@/lib/staged-pdf";
-import { MAX_PDF_PAGE_COUNT, MAX_PDF_SIZE_BYTES, PDF_CONTENT_TYPE, PDF_UPLOAD_DESCRIPTION } from "@/constants/pdf";
+import {
+    MAX_PDF_SIZE_BYTES,
+    PDF_CONTENT_TYPE,
+    PDF_UPLOAD_BUTTON_LABEL,
+    PDF_UPLOAD_DESCRIPTION,
+    PDF_UPLOAD_DROP_HINT,
+    PDF_UPLOAD_LIMITS_LABEL,
+} from "@/constants/pdf";
 import { SESSION_ROUTE } from "@/constants/routes";
 import type { PdfUploadBoxProps } from "@/types/pdf";
 import { formatFileSize } from "@/utils/pdf/format-file-size";
@@ -153,8 +160,8 @@ const PdfUploadBox = ({ className, isAuthenticated }: PdfUploadBoxProps) => {
                                     size="icon-lg"
                                     className="text-destructive hover:border-destructive hover:bg-destructive/10 hover:text-destructive size-12"
                                     onClick={clearFile}
-                                    aria-label="Remove selected PDF"
-                                    title="Remove PDF"
+                                    aria-label="Remove selected learning material"
+                                    title="Remove learning material"
                                 >
                                     <X aria-hidden="true" className="size-6" />
                                 </Button>
@@ -165,14 +172,14 @@ const PdfUploadBox = ({ className, isAuthenticated }: PdfUploadBoxProps) => {
                                     type="button"
                                     variant="outline"
                                     onClick={() => inputRef.current?.click()}
-                                    aria-label="Choose a PDF"
-                                    title="Choose a PDF"
+                                    aria-label={PDF_UPLOAD_BUTTON_LABEL}
+                                    title={PDF_UPLOAD_BUTTON_LABEL}
                                 >
                                     <Upload aria-hidden="true" data-icon="inline-start" strokeWidth={1.7} />
-                                    Choose a PDF
+                                    {PDF_UPLOAD_BUTTON_LABEL}
                                 </Button>
                                 <span className="text-sm text-foreground/50">
-                                    or drag and drop it anywhere in this box
+                                    {PDF_UPLOAD_DROP_HINT}
                                 </span>
                             </div>
                         )}
@@ -197,12 +204,12 @@ const PdfUploadBox = ({ className, isAuthenticated }: PdfUploadBoxProps) => {
                                 disabled={isPreparing}
                                 onClick={startExplanation}
                             >
-                                {isPreparing ? "Extracting PDF..." : "Begin a learning session"}
+                                {isPreparing ? "Preparing learning material..." : "Begin a learning session"}
                                 <ArrowRight aria-hidden="true" data-icon="inline-end" />
                             </Button>
                         ) : (
                             <span className="text-xs font-medium">
-                                PDF • Up to 20 MB • {MAX_PDF_PAGE_COUNT} pages max
+                                {PDF_UPLOAD_LIMITS_LABEL}
                             </span>
                         )}
                     </CardFooter>

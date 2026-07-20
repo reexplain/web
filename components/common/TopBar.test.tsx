@@ -20,6 +20,13 @@ describe("TopBar", () => {
     render(await TopBar());
 
     expect(screen.getByRole("link", { name: /reexplain/i })).toHaveAttribute("href", "/dashboard");
-    expect(screen.getByText("Authenticated")).toBeInTheDocument();
+    expect(screen.queryByText("Authenticated")).not.toBeInTheDocument();
+  });
+
+  it("keeps the login control for signed-out visitors", async () => {
+    (auth.api.getSession as unknown as jest.Mock).mockResolvedValue(null);
+    render(await TopBar());
+
+    expect(screen.getByText("Anonymous")).toBeInTheDocument();
   });
 });
