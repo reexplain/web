@@ -23,6 +23,7 @@ import { cn } from "@/utils/ui/cn";
 const GRAPH_NODE_WIDTH = 164;
 const GRAPH_NODE_MIN_HEIGHT = 58;
 const GRAPH_NODE_Z_INDEX = 60;
+const GRAPH_SELECTED_NODE_Z_INDEX = 70;
 const GRAPH_NODE_CONTENT_WIDTH = 20;
 const GRAPH_NODE_LINE_HEIGHT = 18;
 const GRAPH_NODE_VERTICAL_CHROME = 24;
@@ -108,6 +109,7 @@ const buildFlowNodes = (
   nodes: MasteryNode[],
   edges: MasteryGraphData["edges"],
   isConnectionAligned: boolean,
+  selectedNodeId?: string,
 ): Node[] => {
   const centerX = 330;
   const centerY = 220;
@@ -120,8 +122,10 @@ const buildFlowNodes = (
     const angle = index * 2.399963;
     const radius = nodes.length === 1 ? 0 : 105 + ring * 72;
     const palette = stateStyles[node.masteryState];
+    const isSelected = node.id === selectedNodeId;
 
     return {
+      className: isSelected ? "mastery-node-selected" : undefined,
       id: node.id,
       position: isConnectionAligned
         ? connectionAlignedPositions!.get(node.id)!
@@ -143,11 +147,15 @@ const buildFlowNodes = (
         height: "fit-content",
         justifyContent: "center",
         minHeight: GRAPH_NODE_MIN_HEIGHT,
-        boxShadow: node.masteryState === "mastered" ? "4px 4px 0 var(--graph-mastered-shadow)" : "none",
+        boxShadow: isSelected
+          ? "0 0 0 3px #f97316, 0 0 18px 5px rgb(249 115 22 / 45%)"
+          : node.masteryState === "mastered"
+            ? "4px 4px 0 var(--graph-mastered-shadow)"
+            : "none",
         textAlign: "center",
         width: GRAPH_NODE_WIDTH,
       },
-      zIndex: GRAPH_NODE_Z_INDEX,
+      zIndex: isSelected ? GRAPH_SELECTED_NODE_Z_INDEX : GRAPH_NODE_Z_INDEX,
     };
   });
 };
@@ -195,17 +203,21 @@ const MasteryGraph = ({ graph }: MasteryGraphProps) => {
     () => graph.edges.length > 0 ? graph.edges : buildFallbackEdges(graph.nodes),
     [graph.edges, graph.nodes],
   );
+  const selectedNode =
+    graph.nodes.find((node) => node.id === selectedId) ?? graph.nodes[0];
   const flowNodes = useMemo(
-    () => buildFlowNodes(graph.nodes, visibleEdges, isConnectionAligned),
-    [graph.nodes, isConnectionAligned, visibleEdges],
+    () => buildFlowNodes(
+      graph.nodes,
+      visibleEdges,
+      isConnectionAligned,
+      selectedNode?.id,
+    ),
+    [graph.nodes, isConnectionAligned, selectedNode?.id, visibleEdges],
   );
   const flowEdges = useMemo(
     () => buildFlowEdges(visibleEdges, hoveredNodeId),
     [hoveredNodeId, visibleEdges],
   );
-  const selectedNode =
-    graph.nodes.find((node) => node.id === selectedId) ?? graph.nodes[0];
-
   return (
     <section className="flex scroll-mt-40 flex-col gap-5 lg:scroll-mt-8" id="mastery-graph">
       <div className="flex flex-col items-start justify-between gap-2 border-b pb-4 sm:flex-row sm:items-end">

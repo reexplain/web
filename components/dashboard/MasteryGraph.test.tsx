@@ -20,6 +20,7 @@ jest.mock("@xyflow/react", () => ({
       style?: React.CSSProperties;
     }>;
     nodes: Array<{
+      className?: string;
       id: string;
       data: { label: string };
       position: { x: number; y: number };
@@ -33,6 +34,7 @@ jest.mock("@xyflow/react", () => ({
     <div aria-label="Flow canvas">
       {nodes.map((node) => (
         <button
+          data-class={node.className}
           data-testid={`flow-node-${node.id}`}
           data-z-index={node.zIndex}
           key={node.id}
@@ -104,6 +106,13 @@ describe("MasteryGraph", () => {
     });
     expect(Number(screen.getByTestId("flow-node-concept-1").dataset.zIndex))
       .toBeGreaterThan(50);
+    expect(screen.getByTestId("flow-node-concept-1")).toHaveAttribute(
+      "data-class",
+      "mastery-node-selected",
+    );
+    expect(screen.getByTestId("flow-node-concept-1")).toHaveStyle({
+      boxShadow: "0 0 0 3px #f97316, 0 0 18px 5px rgb(249 115 22 / 45%)",
+    });
   });
 
   it("keeps the graph interactive on small screens and moves its details below it", () => {
@@ -147,6 +156,14 @@ describe("MasteryGraph", () => {
 
     expect(screen.getByText("conditional-probability.pdf")).toBeInTheDocument();
     expect(screen.queryByText("bayesian-inference.pdf")).not.toBeInTheDocument();
+    expect(screen.getByTestId("flow-node-concept-2")).toHaveAttribute(
+      "data-class",
+      "mastery-node-selected",
+    );
+    expect(screen.getByTestId("flow-node-concept-1")).not.toHaveAttribute(
+      "data-class",
+      "mastery-node-selected",
+    );
   });
 
   it("shows the empty state for an empty realtime graph", () => {
