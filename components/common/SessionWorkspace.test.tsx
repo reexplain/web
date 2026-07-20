@@ -2,8 +2,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import SessionWorkspace from "@/components/common/SessionWorkspace";
 
+const mockReplace = jest.fn();
+
 jest.mock("sonner", () => ({
   toast: { error: jest.fn() },
+}));
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace }),
 }));
 
 const mockToastError = toast.error as jest.Mock;
@@ -61,6 +66,7 @@ const activeWorkspace = {
 describe("SessionWorkspace", () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = jest.fn();
+    mockReplace.mockClear();
     mockToastError.mockClear();
     MockMediaRecorder.latest = null;
     Object.defineProperty(global, "MediaRecorder", {
@@ -95,7 +101,13 @@ describe("SessionWorkspace", () => {
     expect(screen.getByText("LISTENING")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Teach" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Teach the next idea in your own words...")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Record" })).toBeInTheDocument();
+    const recordButton = screen.getByRole("button", { name: "Record" });
+    const sendButton = screen.getByRole("button", { name: "Send explanation" });
+    expect(recordButton).toHaveClass("bg-emerald-500");
+    expect(recordButton.parentElement).toContainElement(sendButton);
+    expect(screen.getByText("0:00 / 2:00")).toBeInTheDocument();
+    expect(screen.queryByText("Voice response")).not.toBeInTheDocument();
+    expect(screen.queryByText("Or type")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Teach the AI learner")).toHaveAttribute("maxlength", "4000");
     expect(screen.getByText("0 / 4,000")).toBeInTheDocument();
 
@@ -184,10 +196,10 @@ describe("SessionWorkspace", () => {
     await screen.findByText("Explain paging.");
 
     fireEvent.click(screen.getByRole("button", { name: "Record" }));
-    expect(await screen.findByRole("button", { name: "Stop" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Stop recording" })).toBeInTheDocument();
     expect(screen.getByText("0:00 / 2:00")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop recording" }));
 
     expect(
       await screen.findByDisplayValue("Paging maps virtual to physical addresses."),
@@ -317,6 +329,68 @@ describe("SessionWorkspace", () => {
     expect(screen.getByText("Progress saved")).toBeInTheDocument();
     expect(screen.getByText("2 min")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /go to dashboard/i })).toBeInTheDocument();
+  });
+
+  it("saves before following the top-bar logo link", async () => {
+    const incompleteWorkspace = {
+      ...activeWorkspace,
+      concepts: [{ id: "concept-1", name: "Paging", state: "developing" }],
+    };
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => incompleteWorkspace })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: "active", workspace: incompleteWorkspace }),
+      });
+
+    render(
+      <>
+        <a href="/dashboard">ReExplain</a>
+        <SessionWorkspace learningSessionId="session-1" />
+      </>,
+    );
+    await screen.findByText("Explain paging.");
+
+    fireEvent.click(screen.getByRole("link", { name: "ReExplain" }));
+
+    expect(screen.getByRole("heading", { name: "Save before leaving?" }))
+      .toBeInTheDocument();
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save and leave" }));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard"));
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("saves before continuing browser Back navigation", async () => {
+    const historyBack = jest.spyOn(window.history, "back").mockImplementation(() => undefined);
+    const incompleteWorkspace = {
+      ...activeWorkspace,
+      concepts: [{ id: "concept-1", name: "Paging", state: "developing" }],
+    };
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => incompleteWorkspace })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: "active", workspace: incompleteWorkspace }),
+      });
+
+    render(<SessionWorkspace learningSessionId="session-1" />);
+    await screen.findByText("Explain paging.");
+
+    fireEvent.popState(window);
+
+    expect(screen.getByRole("heading", { name: "Save before leaving?" }))
+      .toBeInTheDocument();
+    expect(historyBack).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save and leave" }));
+
+    await waitFor(() => expect(historyBack).toHaveBeenCalledTimes(1));
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    historyBack.mockRestore();
   });
 
   it("reports visible session time when saving progress", async () => {

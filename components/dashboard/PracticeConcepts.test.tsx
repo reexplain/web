@@ -29,7 +29,7 @@ describe("PracticeConcepts", () => {
     expect(screen.getByRole("heading", { name: "Practice concepts" }).closest("section"))
       .toHaveClass("scroll-mt-40", "lg:scroll-mt-8");
     expect(screen.getByText("Flashcard: chunk-1:0 Initial concept")).toBeInTheDocument();
-    expect(screen.getByText("Quiz: chunk-2:0,chunk-3:0,chunk-4:0")).toBeInTheDocument();
+    expect(screen.getByText("Quiz: chunk-2:0,chunk-3:0,chunk-4:0,chunk-5:0")).toBeInTheDocument();
     expect(screen.queryByText(/reorder/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Practice activities")).toHaveClass("lg:grid-cols-2", "auto-rows-fr");
   });

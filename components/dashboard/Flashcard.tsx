@@ -25,7 +25,7 @@ const Flashcard = ({ item }: FlashcardProps) => {
       >
         <div
           aria-hidden={isFlipped}
-          className="absolute inset-0 flex flex-col border bg-card p-6 text-center shadow-sm backface-hidden"
+          className="absolute inset-0 flex flex-col border bg-card p-7 text-center shadow-sm backface-hidden"
         >
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-500">
             Flashcard
