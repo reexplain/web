@@ -7,6 +7,7 @@ import {
   masteryGraph,
   retractSessionContributions,
 } from "./mastery";
+import { rankPracticeConceptsByWeakness } from "../utils/practice/rank-practice-concepts-by-weakness";
 
 const persistedTurn = v.object({
   id: v.id("sessionTurns"),
@@ -135,8 +136,9 @@ const getPracticeBatch = async (
   if (!document || document.ownerId !== ownerId) return null;
 
   const latestConcepts = getLatestConceptSet(concepts, session.totalConceptCount);
+  const weakestConceptsFirst = rankPracticeConceptsByWeakness(latestConcepts);
   const seenConcepts = new Set<string>();
-  const excerpts = latestConcepts.flatMap((concept) => {
+  const excerpts = weakestConceptsFirst.flatMap((concept) => {
     const name = concept.name.trim();
     const description = concept.description?.trim();
     const content = description ? `${name}: ${description}` : name;
