@@ -53,6 +53,16 @@ describe("SavedSessions", () => {
     expect(screen.getByText("initial.pdf")).toBeInTheDocument();
     expect(screen.getByText("1 session")).toBeInTheDocument();
     expect(screen.getByText("72%")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "View concepts for initial.pdf" }),
+    );
+    expect(screen.getByText("Session concepts")).toBeInTheDocument();
+    expect(screen.getByText("Virtual memory")).toBeInTheDocument();
+    expect(screen.getByText("Demonstrated")).toBeInTheDocument();
+    expect(screen.getByText("88%")).toBeInTheDocument();
+    expect(screen.getByText("Address translation")).toBeInTheDocument();
+    expect(screen.getByText("Developing")).toBeInTheDocument();
+    expect(screen.getByText("55%")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Continue session" })).toHaveAttribute(
       "href",
       "/session?id=session-1",
@@ -98,6 +108,8 @@ describe("SavedSessions", () => {
     );
 
     expect(screen.getByText("Concepts").nextElementSibling).toHaveTextContent("0");
+    expect(screen.getByRole("button", { name: "View concepts for initial.pdf" }))
+      .toBeDisabled();
   });
 
   it("forwards the authoritative snapshot after deletion", () => {

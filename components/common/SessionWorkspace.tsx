@@ -3,6 +3,7 @@
 import type { FormEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowUp,
@@ -230,6 +231,7 @@ const SessionWorkspace = ({
   pageCount,
   learningSessionId,
 }: SessionWorkspaceProps) => {
+  const router = useRouter();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -240,6 +242,9 @@ const SessionWorkspace = ({
   const discardRecordingRef = useRef(false);
   const activeDurationMsRef = useRef(0);
   const activeSessionStartedAtRef = useRef<number | null>(null);
+  const historyGuardActiveRef = useRef(false);
+  const bypassNextPopRef = useRef(false);
+  const pendingNavigationRef = useRef<string | null>(null);
   const [activeView, setActiveView] = useState<"explain" | "mirror">("explain");
   const [sessionStatus, setSessionStatus] = useState<WorkspaceResponse["status"]>("active");
   const [turns, setTurns] = useState<SessionTurn[]>([]);
@@ -257,6 +262,7 @@ const SessionWorkspace = ({
   const [isEnding, setIsEnding] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [completedWorkspace, setCompletedWorkspace] = useState<WorkspaceResponse | null>(null);
   const [showCompletionSummary, setShowCompletionSummary] = useState(false);
@@ -363,6 +369,63 @@ const SessionWorkspace = ({
       pauseTracking();
     };
   }, [getActiveDurationMs, isHydrating, sessionStatus, showCompletionSummary]);
+
+  useEffect(() => {
+    if (isHydrating || sessionStatus !== "active" || showCompletionSummary) return;
+
+    if (!historyGuardActiveRef.current) {
+      window.history.pushState(
+        { ...window.history.state, reexplainSessionGuard: learningSessionId },
+        "",
+        window.location.href,
+      );
+      historyGuardActiveRef.current = true;
+    }
+
+    const requestLeave = (destination: string) => {
+      pendingNavigationRef.current = destination;
+      setIsLeaveDialogOpen(true);
+    };
+    const handlePopState = () => {
+      if (bypassNextPopRef.current) {
+        bypassNextPopRef.current = false;
+        return;
+      }
+
+      historyGuardActiveRef.current = false;
+      requestLeave("back");
+    };
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const element = event.target instanceof Element ? event.target : null;
+      const anchor = element?.closest<HTMLAnchorElement>("a[href]");
+      if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.origin !== window.location.origin) return;
+      if (destination.href === window.location.href) return;
+
+      event.preventDefault();
+      requestLeave(`${destination.pathname}${destination.search}${destination.hash}`);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      document.removeEventListener("click", handleDocumentClick, true);
+    };
+  }, [isHydrating, learningSessionId, sessionStatus, showCompletionSummary]);
 
   useEffect(() => () => {
     if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
@@ -554,8 +617,21 @@ const SessionWorkspace = ({
       applyWorkspace(body.workspace);
       activeDurationMsRef.current = body.workspace.activeDurationMs ?? activeDurationMs;
       setCompletedWorkspace(body.workspace);
-      setShowCompletionSummary(true);
+      const pendingNavigation = pendingNavigationRef.current;
+      pendingNavigationRef.current = null;
+      setIsLeaveDialogOpen(false);
       setIsEnding(false);
+      if (pendingNavigation === "back") {
+        bypassNextPopRef.current = true;
+        window.history.back();
+        return;
+      }
+      if (pendingNavigation) {
+        router.replace(pendingNavigation);
+        return;
+      }
+
+      setShowCompletionSummary(true);
     } catch (error) {
       if (document.visibilityState !== "hidden") {
         activeSessionStartedAtRef.current = Date.now();
@@ -581,6 +657,19 @@ const SessionWorkspace = ({
     : 0;
   const canCompleteSession =
     concepts.length > 0 && concepts.every((concept) => concept.state === "demonstrated");
+  const isLeavingPage = pendingNavigationRef.current !== null;
+  const cancelLeave = () => {
+    if (pendingNavigationRef.current === "back" && !historyGuardActiveRef.current) {
+      window.history.pushState(
+        { ...window.history.state, reexplainSessionGuard: learningSessionId },
+        "",
+        window.location.href,
+      );
+      historyGuardActiveRef.current = true;
+    }
+    pendingNavigationRef.current = null;
+    setIsLeaveDialogOpen(false);
+  };
 
   if (completedWorkspace && showCompletionSummary) {
     return (
@@ -626,7 +715,16 @@ const SessionWorkspace = ({
               </div>
             ) : null}
             {sessionStatus === "active" ? (
-              <Dialog>
+              <Dialog
+                onOpenChange={(open) => {
+                  if (open) {
+                    setIsLeaveDialogOpen(true);
+                  } else if (!isEnding) {
+                    cancelLeave();
+                  }
+                }}
+                open={isLeaveDialogOpen}
+              >
                 <DialogTrigger asChild>
                   <Button disabled={isEnding || isSubmitting || isRecording || isTranscribing} size="sm" variant="outline">
                     {isEnding
@@ -643,10 +741,16 @@ const SessionWorkspace = ({
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle className="font-secondary text-2xl font-medium">
-                      {canCompleteSession ? "Complete this session?" : "Save your progress?"}
+                      {isLeavingPage
+                        ? "Save before leaving?"
+                        : canCompleteSession
+                          ? "Complete this session?"
+                          : "Save your progress?"}
                     </DialogTitle>
                     <DialogDescription>
-                      {canCompleteSession
+                      {isLeavingPage
+                        ? "Your current progress will be saved before you leave this session."
+                        : canCompleteSession
                         ? "All concepts are demonstrated. This session will be added to practice and mastery."
                         : "This session will stay in progress so you can resume from where you left off."}
                     </DialogDescription>
@@ -659,9 +763,9 @@ const SessionWorkspace = ({
                       {isEnding ? (
                         <>
                           <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" data-icon="inline-start" />
-                          {canCompleteSession ? "Completing..." : "Saving..."}
+                          {isLeavingPage || !canCompleteSession ? "Saving..." : "Completing..."}
                         </>
-                      ) : canCompleteSession ? "Complete session" : "Save and leave"}
+                      ) : isLeavingPage || !canCompleteSession ? "Save and leave" : "Complete session"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -766,70 +870,6 @@ const SessionWorkspace = ({
 
           {sessionStatus === "active" ? (
             <form className="flex min-w-0 max-w-full shrink-0 flex-col gap-2 border-t bg-background p-3 sm:p-4" onSubmit={submitResponse}>
-              <div className={cn(
-                "flex min-h-14 items-center justify-between gap-3 border px-3 py-2",
-                isRecording
-                  ? "border-red-400 bg-red-50 dark:border-red-900 dark:bg-red-950/40"
-                  : "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/50",
-              )}>
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className={cn(
-                    "grid size-8 shrink-0 place-items-center",
-                    isRecording ? "bg-red-500 text-white" : "bg-emerald-500 text-white",
-                  )}>
-                    {isTranscribing ? (
-                      <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
-                    ) : isRecording ? (
-                      <span className="size-2 animate-pulse rounded-full bg-white motion-reduce:animate-none" />
-                    ) : (
-                      <Mic aria-hidden="true" className="size-4" />
-                    )}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium leading-5">
-                      {isTranscribing ? "Transcribing voice" : isRecording ? "Recording voice" : "Voice response"}
-                    </p>
-                    <p className="text-xs tabular-nums text-foreground/60" aria-live="polite">
-                      {formatRecordingTime(recordingSeconds)} / {formatRecordingTime(MAX_VOICE_DURATION_SECONDS)}
-                    </p>
-                  </div>
-                </div>
-
-                {isRecording ? (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      aria-label="Discard voice recording"
-                      onClick={() => stopRecording(true)}
-                      size="icon-sm"
-                      title="Discard voice recording"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <X aria-hidden="true" />
-                    </Button>
-                    <Button onClick={() => stopRecording()} size="sm" type="button" variant="destructive">
-                      <Square aria-hidden="true" data-icon="inline-start" />
-                      Stop
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    disabled={isTranscribing || isSubmitting || isEnding}
-                    onClick={() => void startRecording()}
-                    size="sm"
-                    type="button"
-                  >
-                    <Mic aria-hidden="true" data-icon="inline-start" />
-                    Record
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 text-[0.68rem] font-medium uppercase tracking-[0.14em] text-foreground/45">
-                <span className="h-px flex-1 bg-border" />
-                Or type
-                <span className="h-px flex-1 bg-border" />
-              </div>
               <div className="min-w-0 max-w-full border border-foreground/25 bg-background focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
                 <label className="sr-only" htmlFor="explanation-response">Teach the AI learner</label>
                 <textarea
@@ -846,19 +886,67 @@ const SessionWorkspace = ({
                   <span className="text-xs tabular-nums text-foreground/50">
                     {response.length.toLocaleString()} / {MAX_SESSION_INPUT_LENGTH.toLocaleString()}
                   </span>
-                  <Button
-                    aria-label={isSubmitting ? "Sending explanation" : "Send explanation"}
-                    disabled={!response.trim() || isSubmitting || isEnding || isRecording || isTranscribing}
-                    size="icon-sm"
-                    type="submit"
-                    title={isSubmitting ? "Sending explanation" : "Send explanation"}
-                  >
-                    {isSubmitting ? (
-                      <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
-                    ) : (
-                      <ArrowUp aria-hidden="true" />
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span
+                      aria-live="polite"
+                      className={cn(
+                        "text-xs tabular-nums text-foreground/50",
+                        isRecording && "text-emerald-700 dark:text-emerald-300",
+                      )}
+                    >
+                      {isTranscribing
+                        ? "Transcribing…"
+                        : `${formatRecordingTime(recordingSeconds)} / ${formatRecordingTime(MAX_VOICE_DURATION_SECONDS)}`}
+                    </span>
+                    {isRecording ? (
+                      <Button
+                        aria-label="Discard voice recording"
+                        onClick={() => stopRecording(true)}
+                        size="icon-sm"
+                        title="Discard voice recording"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <X aria-hidden="true" />
+                      </Button>
+                    ) : null}
+                    <Button
+                      aria-label={isTranscribing ? "Transcribing voice response" : isRecording ? "Stop recording" : "Record"}
+                      className="bg-emerald-500 dark:bg-emerald-600 text-white hover:bg-emerald-600 dark:hover:bg-emerald-700"
+                      disabled={isTranscribing || isSubmitting || isEnding}
+                      onClick={() => {
+                        if (isRecording) {
+                          stopRecording();
+                        } else {
+                          void startRecording();
+                        }
+                      }}
+                      size="icon-sm"
+                      title={isTranscribing ? "Transcribing voice response" : isRecording ? "Stop recording" : "Record a voice response"}
+                      type="button"
+                    >
+                      {isTranscribing ? (
+                        <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
+                      ) : isRecording ? (
+                        <Square aria-hidden="true" />
+                      ) : (
+                        <Mic aria-hidden="true" />
+                      )}
+                    </Button>
+                    <Button
+                      aria-label={isSubmitting ? "Sending explanation" : "Send explanation"}
+                      disabled={!response.trim() || isSubmitting || isEnding || isRecording || isTranscribing}
+                      size="icon-sm"
+                      type="submit"
+                      title={isSubmitting ? "Sending explanation" : "Send explanation"}
+                    >
+                      {isSubmitting ? (
+                        <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
+                      ) : (
+                        <ArrowUp aria-hidden="true" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </form>

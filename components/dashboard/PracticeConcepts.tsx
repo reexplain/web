@@ -8,7 +8,7 @@ import type { PracticeConceptsProps } from "@/types/dashboard";
 
 const PracticeConcepts = ({ excerpts }: PracticeConceptsProps) => {
   const contentKey = excerpts.map((item) => item.id).join(":");
-  const quizItems = excerpts.slice(1, 4);
+  const quizItems = excerpts.slice(1, 5);
 
   return (
     <section className="flex scroll-mt-40 flex-col gap-5 lg:scroll-mt-8" id="practice">
@@ -29,7 +29,7 @@ const PracticeConcepts = ({ excerpts }: PracticeConceptsProps) => {
           key={contentKey}
         >
           <Flashcard item={excerpts[0]} />
-          {quizItems.length === 3 ? <Quiz items={quizItems} /> : null}
+          {quizItems.length === 4 ? <Quiz items={quizItems} /> : null}
         </div>
       ) : (
         <DashboardEmptyState

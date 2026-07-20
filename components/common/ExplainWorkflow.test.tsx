@@ -64,6 +64,7 @@ describe("ExplainWorkflow", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Something went wrong while preparing your learning session. Please try again.",
     );
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
   it("shows the learning-material validation error from the PDF service", async () => {
@@ -83,5 +84,28 @@ describe("ExplainWorkflow", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "This PDF does not seem to contain learning material suitable for a learning session.",
     );
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Choose another PDF" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
+  it("does not offer retry when the PDF has no extractable text", async () => {
+    mockGetStagedPdf.mockResolvedValue(
+      new File(["pdf"], "scan.pdf", { type: "application/pdf" }),
+    );
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: "The PDF does not contain extractable text." }),
+    } as Response);
+
+    render(<ExplainWorkflow />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The PDF does not contain extractable text.",
+    );
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Choose another PDF" })).toBeInTheDocument();
   });
 });

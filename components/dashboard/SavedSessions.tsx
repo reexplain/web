@@ -1,11 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, History, Play } from "lucide-react";
+import { FileText, History, Play, TableOfContents } from "lucide-react";
 import DashboardEmptyState from "@/components/dashboard/DashboardEmptyState";
 import DeleteSessionButton from "@/components/dashboard/DeleteSessionButton";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DASHBOARD_DATE_FORMATTER, SESSION_STATUS_LABEL } from "@/constants/dashboard";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  CONCEPT_STATE_LABEL,
+  DASHBOARD_DATE_FORMATTER,
+  SESSION_STATUS_LABEL,
+} from "@/constants/dashboard";
 import type { SavedSessionsProps } from "@/types/dashboard";
 
 const SavedSessions = ({ onSnapshotChange, sessions }: SavedSessionsProps) => {
@@ -57,8 +70,52 @@ const SavedSessions = ({ onSnapshotChange, sessions }: SavedSessionsProps) => {
                   </div>
                   <div className="flex flex-col gap-1 pl-4">
                     <span className="text-xs text-foreground/50">Concepts</span>
-                    <span className="font-secondary text-2xl font-medium">
-                      {savedSession.conceptCount ?? concepts.length}
+                    <span className="flex items-center gap-1">
+                      <span className="font-secondary text-2xl font-medium">
+                        {savedSession.conceptCount ?? concepts.length}
+                      </span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            aria-label={`View concepts for ${savedSession.filename}`}
+                            disabled={concepts.length === 0}
+                            size="icon-sm"
+                            title={`View concepts for ${savedSession.filename}`}
+                            variant="outline"
+                            className="size-6!"
+                          >
+                            <TableOfContents aria-hidden="true" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="max-h-80 w-80 overflow-y-auto">
+                          <PopoverHeader>
+                            <PopoverTitle>Session concepts</PopoverTitle>
+                            <PopoverDescription>
+                              Latest understanding captured for this session.
+                            </PopoverDescription>
+                          </PopoverHeader>
+                          <ul className="flex flex-col divide-y">
+                            {concepts.map((concept) => (
+                              <li
+                                className="flex items-center justify-between gap-4 py-3"
+                                key={concept.name}
+                              >
+                                <span className="min-w-0 text-sm font-medium">
+                                  {concept.name}
+                                </span>
+                                <span className="flex shrink-0 items-center gap-2">
+                                  <Badge variant="outline">
+                                    {CONCEPT_STATE_LABEL[concept.state]}
+                                  </Badge>
+                                  <span className="text-sm tabular-nums text-muted-foreground">
+                                    {concept.score}%
+                                  </span>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </PopoverContent>
+                      </Popover>
                     </span>
                   </div>
                 </div>

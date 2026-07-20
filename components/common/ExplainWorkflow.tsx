@@ -15,11 +15,14 @@ const PROCESSING_STAGES = [
   "Extracting key concepts",
 ] as const;
 const PROCESSING_STAGE_DURATION_MS = 3_500;
+const isRejectedPdf = (message: string) =>
+  message.includes("learning material") || message.includes("extractable text");
 
 const ExplainWorkflow = ({ existingSessionId, initialView }: ExplainWorkflowProps) => {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState("");
+  const [isPdfRejected, setIsPdfRejected] = useState(false);
   const [processingStage, setProcessingStage] = useState(0);
 
   useEffect(() => {
@@ -32,6 +35,7 @@ const ExplainWorkflow = ({ existingSessionId, initialView }: ExplainWorkflowProp
 
     const extractPdf = async () => {
       setError("");
+      setIsPdfRejected(false);
       setResult(null);
 
       try {
@@ -67,8 +71,10 @@ const ExplainWorkflow = ({ existingSessionId, initialView }: ExplainWorkflowProp
       } catch (error) {
         if (active && !controller.signal.aborted) {
           const message = error instanceof Error ? error.message : "";
+          const rejectedPdf = isRejectedPdf(message);
+          setIsPdfRejected(rejectedPdf);
           setError(
-            message.includes("learning material") || message.includes("extractable text")
+            rejectedPdf
               ? message
               : "Something went wrong while preparing your learning session. Please try again.",
           );
@@ -105,16 +111,18 @@ const ExplainWorkflow = ({ existingSessionId, initialView }: ExplainWorkflowProp
 
   if (error) {
     return (
-      <div className="flex flex-col gap-5 border-l-2 border-destructive px-5 py-2">
+      <div className="flex flex-col gap-5 border-l-2 border-destructive px-5 py-2 m-auto">
         <div className="flex flex-col gap-2">
           <h1 className="font-secondary text-3xl font-medium">Something went wrong</h1>
           <p className="leading-relaxed text-foreground/60" role="alert">{error}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button onClick={() => setAttempt((current) => current + 1)}>
-            <RotateCcw aria-hidden="true" data-icon="inline-start" />
-            Try again
-          </Button>
+          {!isPdfRejected ? (
+            <Button onClick={() => setAttempt((current) => current + 1)}>
+              <RotateCcw aria-hidden="true" data-icon="inline-start" />
+              Try again
+            </Button>
+          ) : null}
           <Button asChild variant="outline">
             <Link href="/">Choose another PDF</Link>
           </Button>
@@ -134,7 +142,7 @@ const ExplainWorkflow = ({ existingSessionId, initialView }: ExplainWorkflowProp
   }
 
   return (
-    <div className="flex max-w-xl items-start gap-5" role="status">
+    <div className="flex max-w-xl items-start gap-5 m-auto" role="status">
       <span className="sr-only">
         Preparing your PDF for a learning session. This usually takes about a minute.
       </span>

@@ -6,11 +6,42 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import type { QuizProps } from "@/types/dashboard";
 import { getPracticeQuestion } from "@/utils/practice/get-practice-question";
 
+const hashOptionIds = (ids: string[]) => {
+  let hash = 2_166_136_261;
+  for (const character of ids.join("|")) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return hash >>> 0;
+};
+
+const shuffleOptions = (items: QuizProps["items"], correctId: string) => {
+  const options = [...items];
+  let seed = hashOptionIds(options.map((item) => item.id));
+  const nextRandom = () => {
+    seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0;
+    return seed / 4_294_967_296;
+  };
+
+  for (let index = options.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(nextRandom() * (index + 1));
+    [options[index], options[swapIndex]] = [options[swapIndex], options[index]];
+  }
+
+  if (options.length > 1 && options[0].id === correctId) {
+    const swapIndex = 1 + Math.floor(nextRandom() * (options.length - 1));
+    [options[0], options[swapIndex]] = [options[swapIndex], options[0]];
+  }
+
+  return options;
+};
+
 const Quiz = ({ items }: QuizProps) => {
   const [selectedAnswer, setSelectedAnswer] = useState<string>();
   const orderedItems = [...items].sort((left, right) => left.sequence - right.sequence);
   const correctItem = orderedItems[0];
   const correctQuestion = getPracticeQuestion(correctItem.excerpt);
+  const options = shuffleOptions(items, correctItem.id);
 
   const hasAnswered = selectedAnswer !== undefined;
   const isCorrect = selectedAnswer === correctItem.id;
@@ -31,7 +62,7 @@ const Quiz = ({ items }: QuizProps) => {
         tabIndex={0}
       >
         <div className="flex flex-col gap-2" role="radiogroup" aria-label={prompt}>
-          {items.map((item) => (
+          {options.map((item) => (
             <Button
               aria-checked={selectedAnswer === item.id}
               className="h-auto min-h-9 whitespace-normal py-2"
