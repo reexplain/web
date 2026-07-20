@@ -1,7 +1,11 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
-import { retractSessionContributions } from "./mastery";
+import {
+  getGraphForOwner,
+  masteryGraph,
+  retractSessionContributions,
+} from "./mastery";
 
 const persistedTurn = v.object({
   id: v.id("sessionTurns"),
@@ -53,7 +57,7 @@ const openQuestionAssessment = v.object({
 });
 
 const practiceExcerpt = v.object({
-  id: v.id("documentChunks"),
+  id: v.string(),
   excerpt: v.string(),
   sequence: v.number(),
 });
@@ -75,10 +79,33 @@ const savedSession = v.object({
     v.literal("ready"),
     v.literal("failed"),
   ),
+  understandingScore: v.optional(v.number()),
+  conceptCount: v.number(),
+  summary: v.optional(v.string()),
+  concepts: v.array(
+    v.object({
+      name: v.string(),
+      state: v.union(
+        v.literal("unexplored"),
+        v.literal("developing"),
+        v.literal("demonstrated"),
+      ),
+      score: v.number(),
+    }),
+  ),
   updatedAt: v.number(),
 });
 
 const normalizeConceptName = (name: string) => name.trim().toLocaleLowerCase();
+const PRACTICE_CONCEPT_LIMIT = 7;
+const DOCUMENT_STRUCTURE_CONCEPT_PATTERN = /\b(?:appendix|chapter|exercise|figure|lesson|page|section|table|unit)\b/i;
+const getLatestConceptSet = <Concept extends { sequence: number; updatedAt: number }>(
+  concepts: Concept[],
+  totalConceptCount: number,
+) => [...concepts]
+  .sort((left, right) => right.updatedAt - left.updatedAt)
+  .slice(0, totalConceptCount)
+  .sort((left, right) => left.sequence - right.sequence);
 
 const getSessionsForOwner = async (ctx: QueryCtx, ownerId: string) => {
   const sessions = await ctx.db
@@ -88,14 +115,36 @@ const getSessionsForOwner = async (ctx: QueryCtx, ownerId: string) => {
     )
     .order("desc")
     .take(12);
-  const sessionsWithDocuments = await Promise.all(
-    sessions.map(async (session) => ({
-      session,
-      document: await ctx.db.get("documents", session.documentId),
-    })),
+  const sessionsWithDetails = await Promise.all(
+    sessions.map(async (session) => {
+      const [document, concepts, latestSnapshot] = await Promise.all([
+        ctx.db.get("documents", session.documentId),
+        ctx.db
+          .query("concepts")
+          .withIndex("by_sessionId_and_sequence", (query) =>
+            query.eq("sessionId", session._id),
+          )
+          .order("asc")
+          .take(50),
+        ctx.db
+          .query("sessionSnapshots")
+          .withIndex("by_sessionId_and_createdAt", (query) =>
+            query.eq("sessionId", session._id),
+          )
+          .order("desc")
+          .first(),
+      ]);
+
+      return {
+        concepts: getLatestConceptSet(concepts, session.totalConceptCount),
+        document,
+        latestSnapshot,
+        session,
+      };
+    }),
   );
 
-  return sessionsWithDocuments.flatMap(({ document, session }) =>
+  return sessionsWithDetails.flatMap(({ concepts, document, latestSnapshot, session }) =>
     document && document.ownerId === ownerId
       ? [
           {
@@ -103,8 +152,21 @@ const getSessionsForOwner = async (ctx: QueryCtx, ownerId: string) => {
             documentId: document._id,
             filename: document.filename,
             pageCount: document.pageCount,
-            status: session.status === "abandoned" ? "active" as const : session.status,
+            status:
+              session.status === "completed" &&
+              session.totalConceptCount > 0 &&
+              session.demonstratedConceptCount >= session.totalConceptCount
+                ? "completed" as const
+                : "active" as const,
             documentStatus: document.status,
+            understandingScore: session.understandingScore,
+            conceptCount: session.totalConceptCount,
+            summary: latestSnapshot?.summary,
+            concepts: concepts.map((concept) => ({
+              name: concept.name,
+              state: concept.state,
+              score: concept.score,
+            })),
             updatedAt: session.updatedAt,
           },
         ]
@@ -133,35 +195,46 @@ export const listCurrentUser = query({
 const getPracticeForUser = async (ctx: QueryCtx, ownerId: string) => {
   const sessions = await ctx.db
     .query("learningSessions")
-    .withIndex("by_ownerId_and_status_and_updatedAt", (query) =>
-      query.eq("ownerId", ownerId).eq("status", "completed"),
-    )
+    .withIndex("by_ownerId_and_updatedAt", (query) => query.eq("ownerId", ownerId))
     .order("desc")
-    .take(6);
+    .take(12);
   const seenDocumentIds = new Set<string>();
   for (const session of sessions) {
+    if (!session.masteryProcessedAt) continue;
     if (seenDocumentIds.has(session.documentId)) continue;
     const document = await ctx.db.get("documents", session.documentId);
     if (!document || document.ownerId !== ownerId) continue;
     seenDocumentIds.add(document._id);
 
-    const chunks = await ctx.db
-      .query("documentChunks")
-      .withIndex("by_documentId_and_sequence", (query) =>
-        query.eq("documentId", document._id),
-      )
+    const concepts = await ctx.db
+      .query("concepts")
+      .withIndex("by_sessionId_and_sequence", (query) => query.eq("sessionId", session._id))
       .order("asc")
-      .take(9);
-    const excerpts = [];
-    for (const chunk of chunks) {
-      const normalizedText = chunk.text.replace(/\s+/g, " ").trim();
-      if (!normalizedText) continue;
-      excerpts.push({
-        id: chunk._id,
-        excerpt: normalizedText.slice(0, 320),
-        sequence: chunk.sequence,
-      });
-    }
+      .take(50);
+    const latestConcepts = getLatestConceptSet(concepts, session.totalConceptCount);
+    const seenConcepts = new Set<string>();
+    const excerpts = latestConcepts.flatMap((concept) => {
+      const name = concept.name.trim();
+      const description = concept.description?.trim();
+      const content = description ? `${name}: ${description}` : name;
+      const key = normalizeConceptName(name);
+
+      if (
+        !name ||
+        !description ||
+        seenConcepts.has(key) ||
+        DOCUMENT_STRUCTURE_CONCEPT_PATTERN.test(content)
+      ) {
+        return [];
+      }
+
+      seenConcepts.add(key);
+      return [{
+        id: String(concept._id),
+        excerpt: content,
+        sequence: concept.sequence,
+      }];
+    }).slice(0, PRACTICE_CONCEPT_LIMIT);
     if (excerpts.length > 0) return excerpts;
   }
 
@@ -186,6 +259,37 @@ export const getPracticeCurrentUser = query({
   },
 });
 
+const dashboardSnapshot = v.object({
+  sessions: v.array(savedSession),
+  practiceExcerpts: v.array(practiceExcerpt),
+  masteryGraph,
+});
+
+const getDashboardSnapshot = async (ctx: QueryCtx, ownerId: string) => {
+  const [sessions, practiceExcerpts, graph] = await Promise.all([
+    getSessionsForOwner(ctx, ownerId),
+    getPracticeForUser(ctx, ownerId),
+    getGraphForOwner(ctx, ownerId),
+  ]);
+  return { sessions, practiceExcerpts, masteryGraph: graph };
+};
+
+export const getDashboardForOwner = internalQuery({
+  args: { ownerId: v.string() },
+  returns: dashboardSnapshot,
+  handler: async (ctx, args) => getDashboardSnapshot(ctx, args.ownerId),
+});
+
+export const getDashboardCurrentUser = query({
+  args: {},
+  returns: dashboardSnapshot,
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Authentication required.");
+    return getDashboardSnapshot(ctx, identity.subject);
+  },
+});
+
 export const getWorkspace = internalQuery({
   args: {
     ownerId: v.string(),
@@ -199,6 +303,7 @@ export const getWorkspace = internalQuery({
         v.literal("completed"),
         v.literal("abandoned"),
       ),
+      activeDurationMs: v.optional(v.number()),
       startedAt: v.number(),
       completedAt: v.optional(v.number()),
       document: v.object({
@@ -301,12 +406,14 @@ export const getWorkspace = internalQuery({
       )
       .order("asc")
       .take(100);
+    const latestConcepts = getLatestConceptSet(concepts, session.totalConceptCount);
     const conceptNamesById = new Map(
-      concepts.map((concept) => [concept._id, concept.name]),
+      latestConcepts.map((concept) => [concept._id, concept.name]),
     );
 
     return {
       status: session.status,
+      activeDurationMs: session.activeDurationMs,
       startedAt: session.startedAt,
       completedAt: session.completedAt,
       document: {
@@ -326,7 +433,7 @@ export const getWorkspace = internalQuery({
       activeConceptName: session.activeConceptName,
       understandingScore: session.understandingScore,
       confidenceScore: session.confidenceScore,
-      concepts: concepts.map((concept) => ({
+      concepts: latestConcepts.map((concept) => ({
         id: concept._id,
         name: concept.name,
         description: concept.description,
@@ -777,10 +884,15 @@ export const resumeLegacySession = internalMutation({
     if (!session || session.ownerId !== args.ownerId) {
       throw new Error("Session not found.");
     }
-    if (session.status === "abandoned") {
+    const hasFullCoverage =
+      session.totalConceptCount > 0 &&
+      session.demonstratedConceptCount >= session.totalConceptCount;
+    if (session.status === "abandoned" || (session.status === "completed" && !hasFullCoverage)) {
+      await retractSessionContributions(ctx, args.sessionId);
       await ctx.db.patch("learningSessions", args.sessionId, {
         status: "active",
         completedAt: undefined,
+        masteryProcessedAt: undefined,
         updatedAt: Date.now(),
       });
     }

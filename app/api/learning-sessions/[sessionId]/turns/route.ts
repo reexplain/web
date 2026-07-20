@@ -4,6 +4,7 @@ import { internal } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { auth } from "@/lib/auth";
 import { mutateConvexInternal, queryConvexInternal } from "@/lib/convex-server";
+import { MAX_SESSION_INPUT_LENGTH } from "@/constants/session-input";
 import {
   callReExplainApi,
   isLearningTurnResult,
@@ -12,7 +13,6 @@ import {
 
 export const runtime = "nodejs";
 
-const MAX_TURN_LENGTH = 10_000;
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
 type RouteContext = {
@@ -42,9 +42,11 @@ export async function POST(request: Request, context: RouteContext) {
   const requestId =
     typeof candidate.requestId === "string" ? candidate.requestId.trim() : "";
 
-  if (!content || content.length > MAX_TURN_LENGTH) {
+  if (!content || content.length > MAX_SESSION_INPUT_LENGTH) {
     return NextResponse.json(
-      { error: `Responses must contain between 1 and ${MAX_TURN_LENGTH} characters.` },
+      {
+        error: `Responses must contain between 1 and ${MAX_SESSION_INPUT_LENGTH} characters.`,
+      },
       { status: 400 },
     );
   }

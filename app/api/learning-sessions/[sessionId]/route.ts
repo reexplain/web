@@ -30,7 +30,13 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Session not found." }, { status: 404 });
     }
 
-    if (workspace.status === "abandoned") {
+    const hasFullCoverage =
+      workspace.concepts.length > 0 &&
+      workspace.concepts.every((concept) => concept.state === "demonstrated");
+    if (
+      workspace.status === "abandoned" ||
+      (workspace.status === "completed" && !hasFullCoverage)
+    ) {
       await mutateConvexInternal(internal.sessions.resumeLegacySession, {
         ownerId: session.user.id,
         sessionId: sessionId as Id<"learningSessions">,
@@ -100,13 +106,17 @@ export async function DELETE(request: Request, context: RouteContext) {
       ownerId: session.user.id,
       sessionId: sessionId as Id<"learningSessions">,
     });
+    const dashboardSnapshot = await queryConvexInternal(
+      internal.sessions.getDashboardForOwner,
+      { ownerId: session.user.id },
+    );
 
     try {
       revalidatePath("/dashboard");
     } catch {
       // Deletion is authoritative even if cache invalidation is unavailable.
     }
-    return NextResponse.json({ status: "deleted" });
+    return NextResponse.json({ status: "deleted", dashboardSnapshot });
   } catch {
     return NextResponse.json({ error: "The session could not be deleted." }, { status: 503 });
   }

@@ -48,6 +48,12 @@ Use this skill for all user-facing ReExplain interface work.
 - Mock server, network, auth, and router boundaries; test the component's own behavior and accessible output.
 - Run the relevant Jest test before completion. Run the full test suite when shared components or shared UI primitives change.
 
+## Type Organization
+
+- Do not declare interfaces, type aliases, prop contracts, or inline `ComponentProps` shapes inside component files.
+- Put component types in the feature-appropriate file under `types/` (for example, dashboard contracts in `types/dashboard.ts` and session contracts in `types/session.ts`) and import them with `import type`.
+- Keep only component implementation and behavior in `components/`.
+
 ## Review Checklist
 
 1. Clash Grotesk appears only in display or brand roles.
@@ -60,3 +66,4 @@ Use this skill for all user-facing ReExplain interface work.
 8. Brand accents use emerald, with `emerald-500` as the primary value.
 9. Corner radii come from global Tailwind theme tokens, without local `rounded-none` overrides.
 10. Every newly created component has a colocated Jest test that covers its primary behavior.
+11. Component contracts are imported from the appropriate `types/` file; no component-local type declarations remain.

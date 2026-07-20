@@ -5,6 +5,7 @@ export type PdfUploadBoxProps = {
 
 export type ExplainWorkflowProps = {
   existingSessionId?: string;
+  initialView?: "workspace" | "summary";
 };
 
 export type StagedPdfRecord = {

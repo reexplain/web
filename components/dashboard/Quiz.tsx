@@ -3,24 +3,21 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import type { PracticeExcerpt } from "@/types/dashboard";
+import type { QuizProps } from "@/types/dashboard";
+import { getPracticeQuestion } from "@/utils/practice/get-practice-question";
 
-const ideaCue = (excerpt: string) => {
-  const words = excerpt.trim().split(/\s+/).slice(0, 12).join(" ");
-  return words.length < excerpt.trim().length ? `${words}…` : words;
-};
-
-const Quiz = ({ items }: { items: PracticeExcerpt[] }) => {
+const Quiz = ({ items }: QuizProps) => {
   const [selectedAnswer, setSelectedAnswer] = useState<string>();
   const orderedItems = [...items].sort((left, right) => left.sequence - right.sequence);
   const correctItem = orderedItems[0];
+  const correctQuestion = getPracticeQuestion(correctItem.excerpt);
 
   const hasAnswered = selectedAnswer !== undefined;
   const isCorrect = selectedAnswer === correctItem.id;
-  const prompt = `Which passage develops this idea: “${ideaCue(correctItem.excerpt)}”?`;
+  const prompt = correctQuestion.question;
 
   return (
-    <Card className="grid h-96 grid-rows-[auto_1fr_auto] gap-4">
+    <Card className="grid h-full min-h-80 grid-rows-[auto_1fr_auto] gap-4">
       <CardHeader className="gap-2">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-500">
           Quick quiz
@@ -29,7 +26,7 @@ const Quiz = ({ items }: { items: PracticeExcerpt[] }) => {
       </CardHeader>
       <CardContent
         aria-label="Quiz answers"
-        className="min-h-0 overflow-y-auto"
+        className="min-h-0"
         role="region"
         tabIndex={0}
       >
@@ -37,13 +34,13 @@ const Quiz = ({ items }: { items: PracticeExcerpt[] }) => {
           {items.map((item) => (
             <Button
               aria-checked={selectedAnswer === item.id}
-              className="h-auto min-h-9 whitespace-normal py-2 text-left"
+              className="h-auto min-h-9 whitespace-normal py-2"
               key={item.id}
               onClick={() => setSelectedAnswer(item.id)}
               role="radio"
               variant="outline"
             >
-              {item.excerpt}
+              {getPracticeQuestion(item.excerpt).answer}
             </Button>
           ))}
         </div>
@@ -51,7 +48,7 @@ const Quiz = ({ items }: { items: PracticeExcerpt[] }) => {
       <CardFooter className="min-h-10 flex-col items-start gap-2">
         {hasAnswered ? (
           <p className={isCorrect ? "text-emerald-600" : "text-destructive"} role="status">
-            {isCorrect ? "Correct." : "Not quite. Check the source order and try again."}
+            {isCorrect ? "Correct." : "Not quite. Try another answer."}
           </p>
         ) : null}
       </CardFooter>

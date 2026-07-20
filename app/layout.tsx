@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "@/components/ui/sonner";
 import ConvexClientProvider from "@/components/common/ConvexClientProvider";
+import ThemeProvider from "@/components/common/ThemeProvider";
 import type { RootLayoutProps } from "@/types/layout";
 
 import "./globals.css";
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link
           href="https://api.fontshare.com/v2/css?f[]=satoshi@300,301,400,401,500,501,700,701&f[]=clash-grotesk@200,300,400,500,600,700&display=swap"
@@ -50,10 +51,12 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         <link rel="manifest" href="/favicons/site.webmanifest" />
       </head>
       <body className={`antialiased`}>
-        <ConvexClientProvider>
-          <div className="p-4 lg:p-6 mx-auto flex flex-col gap-4 min-h-screen max-w-[1440px]">{children}</div>
-        </ConvexClientProvider>
-        <Toaster position="top-right" richColors />
+        <ThemeProvider>
+          <ConvexClientProvider>
+            <div className="p-4 lg:p-6 mx-auto flex flex-col gap-4 min-h-screen max-w-[1440px]">{children}</div>
+          </ConvexClientProvider>
+          <Toaster position="top-right" richColors />
+        </ThemeProvider>
         <Analytics />
         <SpeedInsights />
       </body>

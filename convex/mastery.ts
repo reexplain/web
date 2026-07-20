@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { MAX_MASTERY_CONCEPTS } from "../constants/mastery";
 
 const EMBEDDING_DIMENSIONS = 1536;
 const MERGE_THRESHOLD = 0.88;
@@ -42,7 +43,7 @@ const graphEdge = v.object({
   strength: v.number(),
 });
 
-const graph = v.object({
+export const masteryGraph = v.object({
   nodes: v.array(graphNode),
   edges: v.array(graphEdge),
 });
@@ -85,13 +86,13 @@ const getMasteryState = (confidenceScore: number, sessionCount: number) => {
   return "mastered" as const;
 };
 
-const getGraphForOwner = async (ctx: QueryCtx, ownerId: string) => {
+export const getGraphForOwner = async (ctx: QueryCtx, ownerId: string) => {
   const [nodes, edges] = await Promise.all([
     ctx.db
       .query("masteryConcepts")
       .withIndex("by_ownerId_and_updatedAt", (query) => query.eq("ownerId", ownerId))
       .order("desc")
-      .take(100),
+      .take(MAX_MASTERY_CONCEPTS),
     ctx.db
       .query("masteryEdges")
       .withIndex("by_ownerId", (query) => query.eq("ownerId", ownerId))
@@ -128,13 +129,13 @@ const getGraphForOwner = async (ctx: QueryCtx, ownerId: string) => {
 
 export const getForOwner = internalQuery({
   args: { ownerId: v.string() },
-  returns: graph,
+  returns: masteryGraph,
   handler: async (ctx, args) => getGraphForOwner(ctx, args.ownerId),
 });
 
 export const getCurrentUser = query({
   args: {},
-  returns: graph,
+  returns: masteryGraph,
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Authentication required.");
@@ -147,6 +148,8 @@ export const applyCompletedSession = internalMutation({
     ownerId: v.string(),
     sessionId: v.id("learningSessions"),
     documentId: v.id("documents"),
+    markCompleted: v.boolean(),
+    activeDurationMs: v.optional(v.number()),
     concepts: v.array(masteryInput),
   },
   returns: v.null(),
@@ -155,8 +158,8 @@ export const applyCompletedSession = internalMutation({
     if (!session || session.ownerId !== args.ownerId || session.documentId !== args.documentId) {
       throw new Error("Session not found.");
     }
-    if (session.masteryProcessedAt) return null;
-    if (args.concepts.some((concept) => concept.embedding.length !== EMBEDDING_DIMENSIONS)) {
+    const mainConcepts = args.concepts.slice(0, MAX_MASTERY_CONCEPTS);
+    if (mainConcepts.some((concept) => concept.embedding.length !== EMBEDDING_DIMENSIONS)) {
       throw new Error("Concept embedding dimensions are invalid.");
     }
 
@@ -165,18 +168,15 @@ export const applyCompletedSession = internalMutation({
       .withIndex("by_sessionId", (query) => query.eq("sessionId", args.sessionId))
       .first();
     if (existingContributions) {
-      await ctx.db.patch("learningSessions", args.sessionId, {
-        status: "completed",
-        masteryProcessedAt: Date.now(),
-        completedAt: session.completedAt ?? Date.now(),
-        updatedAt: Date.now(),
-      });
-      return null;
+      await retractSessionContributions(ctx, args.sessionId);
     }
 
     const now = Date.now();
-    const consolidatedConcepts: typeof args.concepts = [];
-    for (const concept of args.concepts) {
+    const activeDurationMs = args.activeDurationMs === undefined
+      ? session.activeDurationMs
+      : Math.max(session.activeDurationMs ?? 0, args.activeDurationMs);
+    const consolidatedConcepts: typeof mainConcepts = [];
+    for (const concept of mainConcepts) {
       const key = normalizeName(concept.name);
       const duplicate = consolidatedConcepts.find(
         (candidate) =>
@@ -319,8 +319,9 @@ export const applyCompletedSession = internalMutation({
     }
 
     await ctx.db.patch("learningSessions", args.sessionId, {
-      status: "completed",
-      completedAt: session.completedAt ?? now,
+      status: args.markCompleted ? "completed" : "active",
+      completedAt: args.markCompleted ? session.completedAt ?? now : undefined,
+      activeDurationMs,
       masteryProcessedAt: now,
       updatedAt: now,
     });

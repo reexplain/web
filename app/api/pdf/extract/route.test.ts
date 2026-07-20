@@ -88,6 +88,7 @@ describe("POST /api/pdf/extract", () => {
       .mockResolvedValueOnce({
         filename: "notes.pdf",
         page_count: 1,
+        learning_content_confidence: 92,
         text: "Private extracted text",
         pages: [{ page_number: 1, text: "Private extracted text" }],
       })

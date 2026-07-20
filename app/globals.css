@@ -17,6 +17,8 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-graph-grid: var(--graph-grid);
+  --color-graph-edge: var(--graph-edge);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
@@ -56,6 +58,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -88,9 +91,25 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --graph-grid: #d4d4d8;
+  --graph-edge: #94a3b8;
+  --graph-unexplored-background: #f4f4f5;
+  --graph-unexplored-border: #a1a1aa;
+  --graph-unexplored-foreground: #3f3f46;
+  --graph-developing-background: #fffbeb;
+  --graph-developing-border: #f59e0b;
+  --graph-developing-foreground: #78350f;
+  --graph-demonstrated-background: #ecfdf5;
+  --graph-demonstrated-border: #10b981;
+  --graph-demonstrated-foreground: #064e3b;
+  --graph-mastered-background: #ecfeff;
+  --graph-mastered-border: #0891b2;
+  --graph-mastered-foreground: #164e63;
+  --graph-mastered-shadow: #a5f3fc;
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -122,6 +141,21 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --graph-grid: #334155;
+  --graph-edge: #64748b;
+  --graph-unexplored-background: #27272a;
+  --graph-unexplored-border: #71717a;
+  --graph-unexplored-foreground: #e4e4e7;
+  --graph-developing-background: #422006;
+  --graph-developing-border: #d97706;
+  --graph-developing-foreground: #fde68a;
+  --graph-demonstrated-background: #052e22;
+  --graph-demonstrated-border: #10b981;
+  --graph-demonstrated-foreground: #a7f3d0;
+  --graph-mastered-background: #083344;
+  --graph-mastered-border: #06b6d4;
+  --graph-mastered-foreground: #a5f3fc;
+  --graph-mastered-shadow: #164e63;
 }
 
 @layer base {
@@ -129,12 +163,40 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply text-foreground font-primary;
-    background-color: #fefefc;
+    @apply bg-background text-foreground font-primary;
+    background-color: var(--background);
     background-image:
       linear-gradient(rgba(19, 28, 31, 0.022) 1px, transparent 1px),
       linear-gradient(90deg, rgba(19, 28, 31, 0.022) 1px, transparent 1px);
     background-size: 32px 32px;
+  }
+
+  html,
+  body {
+    min-height: 100%;
+    background-color: var(--background);
+  }
+
+  .dark body {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  }
+
+  .react-flow__controls {
+    border-color: var(--border);
+    background: var(--background);
+    box-shadow: none;
+  }
+
+  .react-flow__controls-button {
+    border-bottom-color: var(--border);
+    background: var(--background);
+    fill: var(--foreground);
+  }
+
+  .react-flow__controls-button:hover {
+    background: var(--accent);
   }
 }
 
@@ -144,8 +206,12 @@
   }
 
   .upload-shell {
-    @apply overflow-hidden border-2 border-emerald-500 bg-emerald-50;
+    @apply overflow-hidden border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50;
     box-shadow: 7px 7px 0 #d1fae5;
+  }
+
+  .dark .upload-shell {
+    box-shadow: 7px 7px 0 #064e3b;
   }
 
   .upload-dropzone {
@@ -154,6 +220,19 @@
 
   .upload-shell-active {
     @apply border-emerald-600;
-    box-shadow: 7px 7px 0 #bef264;
+    box-shadow: 7px 7px 0 #a7f3d0;
   }
+
+  .dark .upload-shell-active {
+    box-shadow: 7px 7px 0 #065f46;
+  }
+}
+
+.react-flow {
+  --xy-controls-box-shadow: none;
+  --xy-controls-button-background-color: var(--background);
+  --xy-controls-button-background-color-hover: var(--accent);
+  --xy-controls-button-border-color: var(--border);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-color-hover: var(--accent-foreground);
 }

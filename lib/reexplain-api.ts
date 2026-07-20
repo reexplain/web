@@ -136,6 +136,19 @@ export const isEmbeddingResult = (
   );
 };
 
+export const isTranscriptionResult = (
+  value: unknown,
+): value is { text: string; truncated: boolean } => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { text?: unknown; truncated?: unknown };
+  return (
+    typeof candidate.text === "string" &&
+    candidate.text.length > 0 &&
+    candidate.text.length <= 4_000 &&
+    typeof candidate.truncated === "boolean"
+  );
+};
+
 export async function callReExplainApi<T>(
   path: string,
   init: RequestInit,

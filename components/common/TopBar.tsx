@@ -1,5 +1,6 @@
 import { APP_NAME } from "@/constants/app";
 import AuthControls from "@/components/common/AuthControls";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import Image from "next/image";
 import Link from "next/link";
 import { getCurrentSession } from "@/lib/current-session";
@@ -16,7 +17,10 @@ const TopBar = async () => {
                     <div className="font-secondary text-xl font-medium">{APP_NAME}</div>
                 </div>
             </Link>
-            <AuthControls isAuthenticated={Boolean(session)} />
+            <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <AuthControls isAuthenticated={Boolean(session)} />
+            </div>
         </div>
     )
 }

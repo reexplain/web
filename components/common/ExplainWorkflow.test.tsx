@@ -1,9 +1,13 @@
 import { act, render, screen } from "@testing-library/react";
 import ExplainWorkflow from "@/components/common/ExplainWorkflow";
 import { getStagedPdf } from "@/lib/staged-pdf";
+import type { SessionWorkspaceProps } from "@/types/session";
 
-jest.mock("@/components/common/SessionWorkspace", () => function SessionWorkspaceMock({ learningSessionId }: { learningSessionId: string }) {
-  return <div>Workspace: {learningSessionId}</div>;
+jest.mock("@/components/common/SessionWorkspace", () => function SessionWorkspaceMock({
+  initialView,
+  learningSessionId,
+}: SessionWorkspaceProps) {
+  return <div>Workspace: {learningSessionId} · View: {initialView}</div>;
 });
 jest.mock("@/lib/staged-pdf", () => ({
   clearStagedPdf: jest.fn(),
@@ -20,7 +24,13 @@ describe("ExplainWorkflow", () => {
   it("opens an existing learning session without starting PDF extraction", () => {
     render(<ExplainWorkflow existingSessionId="session-1" />);
 
-    expect(screen.getByText("Workspace: session-1")).toBeInTheDocument();
+    expect(screen.getByText(/Workspace: session-1/)).toBeInTheDocument();
+  });
+
+  it("opens an existing session in its full summary view", () => {
+    render(<ExplainWorkflow existingSessionId="session-1" initialView="summary" />);
+
+    expect(screen.getByText("Workspace: session-1 · View: summary")).toBeInTheDocument();
   });
 
   it("cycles through PDF processing stages", () => {
@@ -42,5 +52,36 @@ describe("ExplainWorkflow", () => {
 
     act(() => jest.advanceTimersByTime(3_500));
     expect(screen.getByText("Reading your PDF")).toBeInTheDocument();
+  });
+
+  it("shows a clear retry message when session preparation fails", async () => {
+    mockGetStagedPdf.mockResolvedValue(null);
+
+    render(<ExplainWorkflow />);
+
+    expect(await screen.findByRole("heading", { name: "Something went wrong" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Something went wrong while preparing your learning session. Please try again.",
+    );
+  });
+
+  it("shows the learning-material validation error from the PDF service", async () => {
+    mockGetStagedPdf.mockResolvedValue(
+      new File(["pdf"], "invoice.pdf", { type: "application/pdf" }),
+    );
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        error:
+          "This PDF does not seem to contain learning material suitable for a learning session.",
+      }),
+    } as Response);
+
+    render(<ExplainWorkflow />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This PDF does not seem to contain learning material suitable for a learning session.",
+    );
   });
 });

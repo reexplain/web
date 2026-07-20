@@ -4,6 +4,8 @@ import { internal } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { auth } from "@/lib/auth";
 import { mutateConvexInternal, queryConvexInternal } from "@/lib/convex-server";
+import { MAX_MASTERY_CONCEPTS } from "@/constants/mastery";
+import { MAX_SESSION_ACTIVE_DURATION_MS } from "@/constants/session-input";
 import {
   callReExplainApi,
   isEmbeddingResult,
@@ -23,6 +25,21 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { sessionId } = await context.params;
+  const body: unknown = await request.json().catch(() => null);
+  const activeDurationMs =
+    body &&
+    typeof body === "object" &&
+    "activeDurationMs" in body &&
+    typeof body.activeDurationMs === "number"
+      ? body.activeDurationMs
+      : undefined;
+  if (
+    activeDurationMs !== undefined &&
+    (!Number.isSafeInteger(activeDurationMs) || activeDurationMs < 0 || activeDurationMs > MAX_SESSION_ACTIVE_DURATION_MS)
+  ) {
+    return NextResponse.json({ error: "The session duration is invalid." }, { status: 400 });
+  }
+
   try {
     const workspace = await queryConvexInternal(internal.sessions.getWorkspace, {
       ownerId: session.user.id,
@@ -32,19 +49,23 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Session not found." }, { status: 404 });
     }
 
+    const hasFullCoverage =
+      workspace.concepts.length > 0 &&
+      workspace.concepts.every((concept) => concept.state === "demonstrated");
     const evidenceCounts = new Map<string, number>();
     for (const item of workspace.evidence) {
       const key = item.conceptName.trim().toLocaleLowerCase();
       evidenceCounts.set(key, (evidenceCounts.get(key) ?? 0) + 1);
     }
-    const embeddingResult = workspace.concepts.length > 0
+    const mainConcepts = workspace.concepts.slice(0, MAX_MASTERY_CONCEPTS);
+    const embeddingResult = mainConcepts.length > 0
       ? await callReExplainApi(
           "/api/v1/learning/embeddings",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              inputs: workspace.concepts.map(
+              inputs: mainConcepts.map(
                 (concept) => `${concept.name}\n${concept.description ?? ""}`.trim(),
               ),
             }),
@@ -57,7 +78,9 @@ export async function POST(request: Request, context: RouteContext) {
       ownerId: session.user.id,
       sessionId: sessionId as Id<"learningSessions">,
       documentId: workspace.document.id,
-      concepts: workspace.concepts.map((concept, index) => ({
+      markCompleted: hasFullCoverage,
+      ...(activeDurationMs === undefined ? {} : { activeDurationMs }),
+      concepts: mainConcepts.map((concept, index) => ({
         name: concept.name,
         description: concept.description ?? "",
         score: concept.score,
@@ -73,11 +96,12 @@ export async function POST(request: Request, context: RouteContext) {
       // Completion is authoritative even if cache invalidation is unavailable.
     }
     return NextResponse.json({
-      status: "completed",
+      status: hasFullCoverage ? "completed" : "active",
       workspace: {
         ...workspace,
-        status: "completed",
-        completedAt: workspace.completedAt ?? Date.now(),
+        activeDurationMs: Math.max(workspace.activeDurationMs ?? 0, activeDurationMs ?? 0),
+        status: hasFullCoverage ? "completed" : "active",
+        completedAt: hasFullCoverage ? workspace.completedAt ?? Date.now() : undefined,
       },
     });
   } catch (error) {

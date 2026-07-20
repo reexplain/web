@@ -13,7 +13,7 @@ import {
 import { MAX_PDF_SIZE_BYTES, PDF_CONTENT_TYPE } from "@/constants/pdf";
 
 const EXTRACTION_VERSION = "pypdf-pages-v1";
-const PROMPT_VERSION = "learning-session-v1";
+const PROMPT_VERSION = "learner-led-teach-back-v2";
 const MAX_CHUNK_CHARACTERS = 12_000;
 const CHUNK_BATCH_SIZE = 20;
 
@@ -25,6 +25,7 @@ type ExtractedPage = {
 type ExtractedPdf = {
   filename: string;
   page_count: number;
+  learning_content_confidence: number;
   pages: ExtractedPage[];
 };
 
@@ -85,6 +86,7 @@ const isExtractedPdf = (value: unknown): value is ExtractedPdf => {
   return (
     typeof candidate.filename === "string" &&
     typeof candidate.page_count === "number" &&
+    typeof candidate.learning_content_confidence === "number" &&
     Array.isArray(candidate.pages) &&
     candidate.pages.every(
       (page) =>
@@ -187,7 +189,7 @@ export async function POST(request: Request) {
         {
           ownerId,
           documentId,
-          questionModel: process.env.REEXPLAIN_QUESTION_MODEL ?? "gpt-5.4",
+          questionModel: process.env.REEXPLAIN_QUESTION_MODEL ?? "gpt-5.6-luna",
           promptVersion: PROMPT_VERSION,
         },
       );
@@ -260,7 +262,7 @@ export async function POST(request: Request) {
       await mutateConvexInternal(internal.sessions.applyModelResult, {
         ownerId,
         sessionId: learningSessionId,
-        requestId: "initial-v1",
+        requestId: "initial-v2",
         content: initialTurn.content,
         interactionType: initialTurn.interaction_type,
         activeConcept: initialTurn.active_concept,
