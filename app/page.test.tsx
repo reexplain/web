@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import Home, { metadata } from "@/app/page";
+import { APP_DESCRIPTION } from "@/constants/app";
 import { AUTH_DEFAULT_REDIRECT } from "@/constants/auth";
 import { HOME_PAGE_TITLE } from "@/constants/metadata";
 import { auth } from "@/lib/auth";
@@ -38,6 +39,9 @@ describe("Home page", () => {
 
     expect(screen.getByRole("heading", { name: /find out what you actually understand/i })).toBeInTheDocument();
     expect(screen.getByTestId("pdf-upload-box")).toHaveTextContent("false");
+    expect(screen.getByText(APP_DESCRIPTION)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /find out what you actually understand/i }).closest("main"))
+      .toHaveClass("max-w-[1536px]", "mx-auto");
   });
 
   it("redirects signed-in visitors to the dashboard", async () => {

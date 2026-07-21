@@ -20,6 +20,7 @@ import {
   SESSION_STATUS_LABEL,
 } from "@/constants/dashboard";
 import type { SavedSessionsProps } from "@/types/dashboard";
+import { getShortConceptLabel } from "@/utils/concepts/get-short-concept-label";
 
 const SavedSessions = ({ onSnapshotChange, sessions }: SavedSessionsProps) => {
   return (
@@ -87,7 +88,7 @@ const SavedSessions = ({ onSnapshotChange, sessions }: SavedSessionsProps) => {
                             <TableOfContents aria-hidden="true" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent align="end" className="max-h-80 w-80 overflow-y-auto">
+                        <PopoverContent align="end" className="max-h-80 w-lg overflow-y-auto z-100">
                           <PopoverHeader>
                             <PopoverTitle>Session concepts</PopoverTitle>
                             <PopoverDescription>
@@ -100,8 +101,8 @@ const SavedSessions = ({ onSnapshotChange, sessions }: SavedSessionsProps) => {
                                 className="flex items-center justify-between gap-4 py-3"
                                 key={concept.name}
                               >
-                                <span className="min-w-0 text-sm font-medium">
-                                  {concept.name}
+                                <span className="min-w-0 text-sm font-medium" title={concept.name}>
+                                  {getShortConceptLabel(concept.name)}
                                 </span>
                                 <span className="flex shrink-0 items-center gap-2">
                                   <Badge variant="outline">

@@ -14,6 +14,7 @@ import type {
   EvidenceListProps,
   SessionCompletionSummaryProps,
 } from "@/types/session";
+import { getShortConceptLabel } from "@/utils/concepts/get-short-concept-label";
 import { cn } from "@/utils/ui/cn";
 
 const formatDuration = (activeDurationMs?: number) => {
@@ -142,7 +143,9 @@ const SessionCompletionSummary = ({
                 <li className="flex flex-col gap-3 py-4" key={concept.id ?? concept.name}>
                   <div className="flex items-start justify-between gap-4">
                     <span className="flex min-w-0 flex-col gap-1">
-                      <span className="font-medium">{concept.name}</span>
+                      <span className="font-medium" title={concept.name}>
+                        {getShortConceptLabel(concept.name)}
+                      </span>
                       {concept.description ? (
                         <span className="text-sm leading-5 text-foreground/55">{concept.description}</span>
                       ) : null}

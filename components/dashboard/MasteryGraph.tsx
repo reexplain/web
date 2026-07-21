@@ -18,6 +18,7 @@ import type {
   MasteryGraphProps,
   MasteryNode,
 } from "@/types/dashboard";
+import { getShortConceptLabel } from "@/utils/concepts/get-short-concept-label";
 import { cn } from "@/utils/ui/cn";
 
 const GRAPH_NODE_WIDTH = 164;
@@ -29,7 +30,7 @@ const GRAPH_NODE_LINE_HEIGHT = 18;
 const GRAPH_NODE_VERTICAL_CHROME = 24;
 
 const getGraphNodeHeight = (node: MasteryNode) => {
-  const label = `${node.name} · ${node.confidenceScore}%`;
+  const label = `${getShortConceptLabel(node.name)} · ${node.confidenceScore}%`;
   const lineCount = Math.max(1, Math.ceil(label.length / GRAPH_NODE_CONTENT_WIDTH));
   return Math.max(
     GRAPH_NODE_MIN_HEIGHT,
@@ -133,7 +134,7 @@ const buildFlowNodes = (
             x: centerX + Math.cos(angle) * radius,
             y: centerY + Math.sin(angle) * radius,
           },
-      data: { label: `${node.name} · ${node.confidenceScore}%` },
+      data: { label: `${getShortConceptLabel(node.name)} · ${node.confidenceScore}%` },
       style: {
         alignItems: "center",
         padding: 10,
@@ -196,7 +197,7 @@ const buildFallbackEdges = (nodes: MasteryNode[]): MasteryGraphData["edges"] =>
   }));
 
 const MasteryGraph = ({ graph }: MasteryGraphProps) => {
-  const [isConnectionAligned, setIsConnectionAligned] = useState(false);
+  const [isConnectionAligned, setIsConnectionAligned] = useState(true);
   const [hoveredNodeId, setHoveredNodeId] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
   const visibleEdges = useMemo(
@@ -205,6 +206,9 @@ const MasteryGraph = ({ graph }: MasteryGraphProps) => {
   );
   const selectedNode =
     graph.nodes.find((node) => node.id === selectedId) ?? graph.nodes[0];
+  const selectedNodeLabel = selectedNode
+    ? getShortConceptLabel(selectedNode.name)
+    : undefined;
   const flowNodes = useMemo(
     () => buildFlowNodes(
       graph.nodes,
@@ -278,7 +282,9 @@ const MasteryGraph = ({ graph }: MasteryGraphProps) => {
                     >
                       {stateLabel[selectedNode.masteryState]}
                     </span>
-                    <h3 className="font-secondary text-xl font-medium">{selectedNode.name}</h3>
+                    <h3 className="font-secondary text-xl font-medium" title={selectedNode.name}>
+                      {selectedNodeLabel}
+                    </h3>
                     <p className="text-sm leading-6 text-foreground/65">{selectedNode.description}</p>
                   </div>
                   <dl className="grid grid-cols-2 gap-3 border-t pt-4 text-sm">

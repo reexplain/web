@@ -204,7 +204,7 @@ const PdfUploadBox = ({ className, isAuthenticated }: PdfUploadBoxProps) => {
                                 disabled={isPreparing}
                                 onClick={startExplanation}
                             >
-                                {isPreparing ? "Preparing learning material..." : "Begin a learning session"}
+                                {isPreparing ? "Cooking a learning session..." : "Begin a learning session"}
                                 <ArrowRight aria-hidden="true" data-icon="inline-end" />
                             </Button>
                         ) : (

@@ -37,7 +37,7 @@ const PracticePage = async () => {
   return (
     <>
       <TopBar />
-      <main className="flex w-full flex-col gap-10 py-6 lg:py-10">
+      <main className="mx-auto flex w-full max-w-[1536px] flex-col gap-10 py-6 lg:py-10">
         <header className="flex flex-col gap-6 border-b pb-6">
           <div>
             <Button asChild size="sm" variant="outline">

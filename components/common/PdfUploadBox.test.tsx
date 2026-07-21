@@ -14,6 +14,7 @@ describe("PdfUploadBox", () => {
     render(<PdfUploadBox isAuthenticated />);
 
     expect(screen.getByText(/textbook chapter, research paper, or study notes/i)).toBeInTheDocument();
+    expect(screen.getByText(/re-explain the ideas in your own words/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Choose learning material" })).toBeInTheDocument();
     expect(screen.getByText("PDF format • Up to 20 MB • 25 pages max")).toBeInTheDocument();
   });

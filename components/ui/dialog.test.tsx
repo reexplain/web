@@ -12,5 +12,7 @@ describe("Dialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open session" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("End session?");
+    expect(screen.getByRole("dialog")).toHaveClass("z-110");
+    expect(document.querySelector('[data-slot="dialog-overlay"]')).toHaveClass("z-110");
   });
 });

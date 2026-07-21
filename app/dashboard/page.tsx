@@ -33,7 +33,7 @@ const DashboardPage = async () => {
   );
 
   return (
-    <div className="relative left-1/2 flex w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-5 lg:w-[calc(100vw-3rem)] lg:flex-row lg:items-start">
+    <div className="mx-auto flex w-full max-w-[1536px] flex-col gap-5 lg:flex-row lg:items-start">
       <DashboardSidebar
         user={{
           email: session.user.email,

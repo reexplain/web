@@ -1,6 +1,6 @@
 export const HOME_PAGE_TITLE = "ReExplain";
 export const HOME_PAGE_DESCRIPTION =
-  "Turn your study materials into active explanation sessions that reveal what you actually understand.";
+  "Re-explain any learning material in your own words with adaptive questions that reveal what you actually understand.";
 export const DASHBOARD_PAGE_TITLE = "Dashboard";
 export const DASHBOARD_PAGE_DESCRIPTION =
   "Continue learning sessions, add study material, and practice what you have learned.";

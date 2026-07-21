@@ -71,6 +71,8 @@ describe("Dashboard page", () => {
     expect(screen.getByRole("heading", { name: "Mastery map" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Saved learning sessions" })).toBeInTheDocument();
     expect(screen.getByText("Ada · ada@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Welcome back, Ada." }).closest("main")?.parentElement)
+      .toHaveClass("max-w-[1536px]", "mx-auto");
   });
 
   it("does not disguise a failed Convex read as an empty dashboard", async () => {

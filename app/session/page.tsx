@@ -37,7 +37,7 @@ const SessionPage = async (
   return (
     <>
       <TopBar />
-      <main className="flex min-h-0 w-full flex-1 py-4 sm:py-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-[1536px] flex-1 py-4 sm:py-6">
         <div className="m-auto w-full min-w-0">
           <ExplainWorkflow
             existingSessionId={existingSessionId}

@@ -57,6 +57,8 @@ describe("Practice page", () => {
     );
     expect(screen.getByText("History: Newest notes.pdf, Older notes.pdf"))
       .toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Practice concepts" }).closest("main"))
+      .toHaveClass("max-w-[1536px]", "mx-auto");
   });
 
   it("redirects visitors who are not signed in", async () => {

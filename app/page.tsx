@@ -22,7 +22,7 @@ const Home = async () => {
   return (
     <>
       <TopBar showGithub />
-      <main className="flex flex-1 flex-col justify-center py-14">
+      <main className="mx-auto flex w-full max-w-[1536px] flex-1 flex-col justify-center py-14">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 sm:gap-10">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4">
@@ -40,7 +40,7 @@ const Home = async () => {
           </div>
           <div className="flex flex-col gap-4">
             <PdfUploadBox isAuthenticated={false} />
-            <div className="flex flex-wrap gap-2 text-xs text-foreground/50">
+            <div className="flex flex-wrap gap-2 text-sm text-foreground/50">
               <span>Interactive sessions powered by GPT 5.6</span>
               {/* <span>Private by default</span> */}
               {/* <span>PDF · 20 MB max</span> */}

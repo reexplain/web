@@ -10,7 +10,7 @@ jest.mock("@xyflow/react", () => ({
     <button {...props} type="button">{children}</button>
   ),
   Controls: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  ReactFlow: ({ children, edges, nodes, onNodeClick, onNodeMouseEnter, onNodeMouseLeave }: {
+  ReactFlow: ({ children, edges, fitView, nodes, onNodeClick, onNodeMouseEnter, onNodeMouseLeave }: {
     children: React.ReactNode;
     edges: Array<{
       className?: string;
@@ -19,6 +19,7 @@ jest.mock("@xyflow/react", () => ({
       target: string;
       style?: React.CSSProperties;
     }>;
+    fitView?: boolean;
     nodes: Array<{
       className?: string;
       id: string;
@@ -31,7 +32,7 @@ jest.mock("@xyflow/react", () => ({
     onNodeMouseEnter: (event: React.MouseEvent<HTMLButtonElement>, node: { id: string }) => void;
     onNodeMouseLeave: () => void;
   }) => (
-    <div aria-label="Flow canvas">
+    <div aria-label="Flow canvas" data-fit-view={fitView}>
       {nodes.map((node) => (
         <button
           data-class={node.className}
@@ -97,6 +98,7 @@ describe("MasteryGraph", () => {
 
     expect(screen.getByRole("heading", { name: "Mastery map" }).closest("section"))
       .toHaveClass("scroll-mt-40", "lg:scroll-mt-8");
+    expect(screen.getByLabelText("Flow canvas")).toHaveAttribute("data-fit-view", "true");
     expect(screen.getAllByText(/Bayes theorem/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/74%/).length).toBeGreaterThan(0);
     expect(screen.getByText("5")).toBeInTheDocument();
@@ -255,7 +257,7 @@ describe("MasteryGraph", () => {
     );
   });
 
-  it("auto-aligns nodes from the graph controls", () => {
+  it("auto-aligns connected nodes when the graph first renders", () => {
     const graph: MasteryGraphData = {
       ...initialGraph,
       nodes: [
@@ -281,16 +283,11 @@ describe("MasteryGraph", () => {
       const position = screen.getByTestId(id).textContent?.match(/at ([\d.]+),([\d.]+)/);
       return { x: Number(position?.[1]), y: Number(position?.[2]) };
     };
-    const distanceBetweenLinkedNodes = () => {
-      const source = readPosition("flow-node-concept-1");
-      const target = readPosition("flow-node-concept-2");
-      return Math.hypot(source.x - target.x, source.y - target.y);
-    };
-    const distanceBeforeAlignment = distanceBetweenLinkedNodes();
+    const source = readPosition("flow-node-concept-1");
+    const target = readPosition("flow-node-concept-2");
 
-    fireEvent.click(screen.getByRole("button", { name: "Auto-align nodes by connections" }));
-
-    expect(distanceBetweenLinkedNodes()).toBeLessThan(distanceBeforeAlignment);
+    expect(source.x).toBe(target.x);
+    expect(target.y).toBeGreaterThan(source.y);
   });
 
   it("keeps every node separated after auto-aligning a dense graph", () => {
@@ -310,8 +307,6 @@ describe("MasteryGraph", () => {
       })),
     );
     render(<MasteryGraph graph={{ nodes, edges }} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Auto-align nodes by connections" }));
 
     const positions = nodes.map((node) => {
       const match = screen.getByTestId(`flow-node-${node.id}`).textContent

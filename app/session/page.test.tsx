@@ -42,7 +42,7 @@ describe("Session page", () => {
     const workflow = screen.getByText(/Explain workflow/);
     expect(workflow).toBeInTheDocument();
     expect(workflow.parentElement).toHaveClass("w-full", "min-w-0");
-    expect(workflow.closest("main")).toHaveClass("w-full", "min-h-0");
+    expect(workflow.closest("main")).toHaveClass("w-full", "min-h-0", "max-w-[1536px]", "mx-auto");
   });
 
   it("opens a requested saved-session summary", async () => {

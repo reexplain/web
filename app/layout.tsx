@@ -53,7 +53,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       <body className={`antialiased`}>
         <ThemeProvider>
           <ConvexClientProvider>
-            <div className="p-4 lg:p-6 mx-auto flex flex-col gap-4 min-h-screen max-w-[1440px]">{children}</div>
+            <div className="p-4 lg:p-6 mx-auto flex flex-col gap-4 min-h-screen max-w-[1536px]">{children}</div>
           </ConvexClientProvider>
           <Toaster position="top-right" richColors />
         </ThemeProvider>
