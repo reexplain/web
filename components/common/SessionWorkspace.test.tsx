@@ -163,6 +163,46 @@ describe("SessionWorkspace", () => {
     expect(
       screen.getByText("The learner connected paging to address translation."),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Review conversation" }));
+
+    expect(await screen.findByRole("button", { name: "Back to session summary" }))
+      .toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save and leave" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to session summary" }));
+    expect(
+      await screen.findByRole("heading", { name: "Here's what your explanations revealed" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a session-summary skeleton instead of the workspace while loading a summary", async () => {
+    let resolveSession: (value: { ok: boolean; json: () => Promise<typeof activeWorkspace> }) => void;
+    const pendingSession = new Promise<{ ok: boolean; json: () => Promise<typeof activeWorkspace> }>((resolve) => {
+      resolveSession = resolve;
+    });
+    global.fetch = jest.fn().mockReturnValue(pendingSession);
+
+    render(<SessionWorkspace initialView="summary" learningSessionId="session-1" />);
+
+    expect(screen.getByRole("status", { name: "Loading session summary" }))
+      .toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status", { name: "Loading session summary" }))
+      .toHaveClass("h-[calc(100dvh-9.5rem)]");
+    expect(screen.queryByLabelText("Teach the AI learner")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save and leave" })).not.toBeInTheDocument();
+
+    resolveSession!({
+      ok: true,
+      json: async () => ({
+        ...activeWorkspace,
+        summary: "The learner connected paging to address translation.",
+      }),
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "Here's what your explanations revealed" }),
+    ).toBeInTheDocument();
   });
 
   it("shows the AI thinking bubble until the first session message loads", async () => {

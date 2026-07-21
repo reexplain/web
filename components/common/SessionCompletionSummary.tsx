@@ -86,7 +86,7 @@ const SessionCompletionSummary = ({
   );
 
   return (
-    <div className="max-h-[calc(100dvh-9.5rem)] overflow-y-auto border bg-background shadow-[7px_7px_0_#d1fae5] dark:shadow-[7px_7px_0_#064e3b]">
+    <div className="h-[calc(100dvh-9.5rem)] overflow-y-auto border bg-background shadow-[7px_7px_0_#d1fae5] dark:shadow-[7px_7px_0_#064e3b]">
       <header className="grid gap-8 border-b bg-emerald-50 px-6 py-8 sm:px-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:px-12 lg:py-10 dark:bg-emerald-950/50">
         <div className="flex max-w-3xl flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">

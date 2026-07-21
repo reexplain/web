@@ -66,9 +66,9 @@ const Quiz = ({ correctItemId, items }: QuizProps) => {
               className={cn(
                 "h-auto min-h-9 whitespace-normal py-2 hover:border-border hover:bg-background dark:hover:border-input dark:hover:bg-input/30",
                 selectedAnswer === item.id && item.id === correctItem.id &&
-                  "border-emerald-500 bg-emerald-500 text-white hover:border-emerald-500 hover:bg-emerald-500 dark:border-emerald-600 dark:bg-emerald-600 dark:hover:border-emerald-600 dark:hover:bg-emerald-600",
+                  "border-emerald-500 bg-emerald-500 text-white hover:text-white hover:border-emerald-500 hover:bg-emerald-500 dark:border-emerald-600 dark:bg-emerald-600 dark:hover:border-emerald-600 dark:hover:bg-emerald-600",
                 selectedAnswer === item.id && item.id !== correctItem.id &&
-                  "border-destructive bg-destructive text-white hover:border-destructive hover:bg-destructive dark:border-destructive/90 dark:bg-destructive/90 dark:hover:border-destructive/90 dark:hover:bg-destructive/90",
+                  "border-destructive bg-destructive text-white hover:text-white hover:border-destructive hover:bg-destructive dark:border-destructive/90 dark:bg-destructive/90 dark:hover:border-destructive/90 dark:hover:bg-destructive/90",
               )}
               key={item.id}
               onClick={() => setSelectedAnswer(item.id)}

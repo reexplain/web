@@ -266,6 +266,7 @@ const SessionWorkspace = ({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [completedWorkspace, setCompletedWorkspace] = useState<WorkspaceResponse | null>(null);
   const [showCompletionSummary, setShowCompletionSummary] = useState(false);
+  const [isReviewingSummary, setIsReviewingSummary] = useState(false);
 
   const applyWorkspace = (workspace: WorkspaceResponse) => {
     setSessionStatus(workspace.status);
@@ -674,9 +675,56 @@ const SessionWorkspace = ({
   if (completedWorkspace && showCompletionSummary) {
     return (
       <SessionCompletionSummary
-        onReview={() => setShowCompletionSummary(false)}
+        onReview={() => {
+          setIsReviewingSummary(true);
+          setShowCompletionSummary(false);
+        }}
         workspace={completedWorkspace}
       />
+    );
+  }
+
+  if (initialView === "summary" && isHydrating) {
+    return (
+      <div
+        aria-busy="true"
+        aria-label="Loading session summary"
+        className="h-[calc(100dvh-9.5rem)] overflow-y-auto border bg-background shadow-[7px_7px_0_#d1fae5] dark:shadow-[7px_7px_0_#064e3b]"
+        role="status"
+      >
+        <div className="grid gap-8 border-b bg-emerald-50 px-6 py-8 sm:px-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:px-12 lg:py-10 dark:bg-emerald-950/50">
+          <div className="flex max-w-3xl flex-col gap-4 animate-pulse">
+            <span className="h-3 w-28 bg-emerald-200 dark:bg-emerald-900" />
+            <span className="h-10 w-3/4 bg-muted" />
+            <span className="h-5 w-full bg-muted" />
+            <span className="h-5 w-5/6 bg-muted" />
+          </div>
+          <span className="h-20 w-28 animate-pulse bg-emerald-200 dark:bg-emerald-900" />
+        </div>
+        <div className="grid border-b sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div className="flex items-center gap-3 border-b px-6 py-5 last:border-b-0 sm:border-r sm:nth-2:border-r-0 lg:border-b-0 lg:nth-2:border-r lg:last:border-r-0" key={index}>
+              <span className="size-5 animate-pulse bg-emerald-100 dark:bg-emerald-950" />
+              <span className="flex flex-1 flex-col gap-2">
+                <span className="h-3 w-20 animate-pulse bg-muted" />
+                <span className="h-5 w-16 animate-pulse bg-muted" />
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="grid lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)]">
+          <div className="flex flex-col gap-5 border-b px-6 py-8 sm:px-9 lg:border-b-0 lg:border-r lg:px-12">
+            <span className="h-3 w-24 animate-pulse bg-emerald-100 dark:bg-emerald-950" />
+            <span className="h-8 w-2/3 animate-pulse bg-muted" />
+            <span className="h-20 w-full animate-pulse bg-muted" />
+          </div>
+          <div className="flex flex-col gap-5 px-6 py-8 sm:px-9">
+            <span className="h-3 w-20 animate-pulse bg-emerald-100 dark:bg-emerald-950" />
+            <span className="h-7 w-3/4 animate-pulse bg-muted" />
+            <span className="h-24 w-full animate-pulse bg-muted" />
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -714,7 +762,18 @@ const SessionWorkspace = ({
                 </div>
               </div>
             ) : null}
-            {sessionStatus === "active" ? (
+            {isReviewingSummary ? (
+              <Button
+                onClick={() => {
+                  setIsReviewingSummary(false);
+                  setShowCompletionSummary(true);
+                }}
+                size="sm"
+                variant="outline"
+              >
+                Back to session summary
+              </Button>
+            ) : sessionStatus === "active" ? (
               <Dialog
                 onOpenChange={(open) => {
                   if (open) {
